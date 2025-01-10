@@ -61,7 +61,7 @@ jobs:
 
   tests:
     needs: [notify-build-start, lint]
-    runs-on: ubuntu-${{ matrix.os }}
+    runs-on: ubuntu-${{ matrix.ubuntu }}
     strategy:
       fail-fast: false
       matrix:
