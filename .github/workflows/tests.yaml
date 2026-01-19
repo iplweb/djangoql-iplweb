@@ -127,6 +127,12 @@ jobs:
           - {django: '5.1.*', python: '3.12', ubuntu: '24.04'}
           - {django: '5.1.*', python: '3.13', ubuntu: '24.04'}
 
+          - {django: '5.2.*', python: '3.10', ubuntu: '24.04'}
+          - {django: '5.2.*', python: '3.11', ubuntu: '24.04'}
+          - {django: '5.2.*', python: '3.12', ubuntu: '24.04'}
+          - {django: '5.2.*', python: '3.13', ubuntu: '24.04'}
+          - {django: '5.2.*', python: '3.14', ubuntu: '24.04'}
+
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python v. >2.7
