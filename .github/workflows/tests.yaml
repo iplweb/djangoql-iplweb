@@ -66,38 +66,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {django: '1.8.*', python: '2.7', ubuntu: '20.04'}
+          - {django: '1.8.*', python: '2.7', ubuntu: '22.04'}
 
-          - {django: '1.9.*', python: '2.7', ubuntu: '20.04'}
+          - {django: '1.9.*', python: '2.7', ubuntu: '22.04'}
 
-          - {django: '1.10.*', python: '2.7', ubuntu: '20.04'}
+          - {django: '1.10.*', python: '2.7', ubuntu: '22.04'}
 
-          - {django: '1.11.*', python: '2.7', ubuntu: '20.04'}
-          - {django: '1.11.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '1.11.*', python: '2.7', ubuntu: '22.04'}
+          - {django: '1.11.*', python: '3.6', ubuntu: '22.04'}
           - {django: '1.11.*', python: '3.7', ubuntu: '22.04'}
 
-          - {django: '2.0.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '2.0.*', python: '3.6', ubuntu: '22.04'}
           - {django: '2.0.*', python: '3.7', ubuntu: '22.04'}
 
-          - {django: '2.1.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '2.1.*', python: '3.6', ubuntu: '22.04'}
           - {django: '2.1.*', python: '3.7', ubuntu: '22.04'}
 
-          - {django: '2.2.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '2.2.*', python: '3.6', ubuntu: '22.04'}
           - {django: '2.2.*', python: '3.7', ubuntu: '22.04'}
           - {django: '2.2.*', python: '3.8', ubuntu: '24.04'}
           - {django: '2.2.*', python: '3.9', ubuntu: '24.04'}
 
-          - {django: '3.0.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '3.0.*', python: '3.6', ubuntu: '22.04'}
           - {django: '3.0.*', python: '3.7', ubuntu: '22.04'}
           - {django: '3.0.*', python: '3.8', ubuntu: '24.04'}
           - {django: '3.0.*', python: '3.9', ubuntu: '24.04'}
 
-          - {django: '3.1.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '3.1.*', python: '3.6', ubuntu: '22.04'}
           - {django: '3.1.*', python: '3.7', ubuntu: '22.04'}
           - {django: '3.1.*', python: '3.8', ubuntu: '24.04'}
           - {django: '3.1.*', python: '3.9', ubuntu: '24.04'}
 
-          - {django: '3.2.*', python: '3.6', ubuntu: '20.04'}
+          - {django: '3.2.*', python: '3.6', ubuntu: '22.04'}
           - {django: '3.2.*', python: '3.7', ubuntu: '22.04'}
           - {django: '3.2.*', python: '3.8', ubuntu: '24.04'}
           - {django: '3.2.*', python: '3.9', ubuntu: '24.04'}
@@ -139,13 +139,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python v. >2.7
-        if: ${{ matrix.python != '2.7' }}
+      - name: Setup Python 3.7+
+        if: ${{ matrix.python != '2.7' && matrix.python != '3.6' }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Setup Python v2.7
-        if: ${{ matrix.python == '2.7' }}
+      - name: Setup Python 2.7/3.6
+        if: ${{ matrix.python == '2.7' || matrix.python == '3.6' }}
         uses: MatteoH2O1999/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
