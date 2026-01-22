@@ -111,3 +111,11 @@ class DjangoQLQuerySetTest(TestCase):
         qs = apply_search(User.objects.all(), 'last_login = None')
         where_clause = str(qs.query).split('WHERE')[1].strip()
         self.assertEqual('"auth_user"."last_login" IS NULL', where_clause)
+
+    def test_datetime_in_query(self):
+        qs = apply_search(User.objects.all(), 'last_login in ("2017-01-01")')
+        where_clause = str(qs.query).split('WHERE')[1].strip()
+        self.assertEqual(
+            '"auth_user"."last_login" IN (2017-01-01 00:00:00)',
+            where_clause,
+        )

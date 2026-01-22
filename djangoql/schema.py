@@ -230,6 +230,14 @@ class DateField(DjangoQLField):
             )
 
     def get_lookup_value(self, value):
+        return (
+            [self.parse_date(v) for v in value]
+            if isinstance(value, list)
+            else self.parse_date(value)
+        )
+
+    @staticmethod
+    def parse_date(value):
         if not value:
             return None
         return datetime.strptime(value, '%Y-%m-%d').date()
@@ -254,6 +262,14 @@ class DateTimeField(DjangoQLField):
             )
 
     def get_lookup_value(self, value):
+        return (
+            [self.parse_datetime(v) for v in value]
+            if isinstance(value, list)
+            else self.parse_datetime(value)
+        )
+
+    @staticmethod
+    def parse_datetime(value):
         if not value:
             return None
         mask = '%Y-%m-%d'
