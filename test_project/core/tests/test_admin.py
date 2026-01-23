@@ -46,14 +46,17 @@ class DjangoQLAdminTest(TestCase):
             )
 
     def test_djangoql_syntax_help(self):
-        url = reverse('admin:djangoql_syntax_help')
-        # unauthorized request should be redirected
-        response = self.client.get(url)
-        self.assertEqual(302, response.status_code)
-        self.assertTrue(self.client.login(**self.credentials))
-        # authorized request should be served
-        response = self.client.get(url)
-        self.assertEqual(200, response.status_code)
+        for app in ['admin', 'zaibatsu']:
+            url = reverse('%s:djangoql_syntax_help' % app)
+            with self.subTest(app=app):
+                # unauthorized request should be redirected
+                response = self.client.get(url)
+                self.assertEqual(302, response.status_code)
+                self.assertTrue(self.client.login(**self.credentials))
+                # authorized request should be served
+                response = self.client.get(url)
+                self.assertEqual(200, response.status_code)
+                self.client.logout()
 
     def test_suggestions(self):
         url = reverse('admin:core_book_djangoql_suggestions')

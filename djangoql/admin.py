@@ -112,6 +112,9 @@ class DjangoQLSearchMixin(object):
             msg = text_type(exception)
         return render_to_string('djangoql/error_message.html', context={
             'error_message': msg,
+            'djangoql_syntax_help_url': reverse(
+                '%s:djangoql_syntax_help' % self.admin_site.name,
+            ),
         })
 
     @property
