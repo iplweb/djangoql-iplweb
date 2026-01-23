@@ -29,6 +29,9 @@ jobs:
 
   lint:
     needs: [notify-build-start]
+    if: |
+      always() &&
+      (needs.notify-build-start.result == 'success' || needs.notify-build-start.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +53,7 @@ jobs:
       # Send notification on build failure
       - name: Notify slack fail
         uses: ivelum/github-action-slack-notify-build@v1.7.2
-        if: failure()
+        if: failure() && github.event_name == 'push'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -61,6 +64,10 @@ jobs:
 
   tests:
     needs: [notify-build-start, lint]
+    if: |
+      always() &&
+      (needs.notify-build-start.result == 'success' || needs.notify-build-start.result == 'skipped') &&
+      needs.lint.result == 'success'
     runs-on: ubuntu-${{ matrix.ubuntu }}
     strategy:
       fail-fast: false
@@ -172,7 +179,7 @@ jobs:
       # Send notification on build failure
       - name: Notify slack fail
         uses: ivelum/github-action-slack-notify-build@v1.7.2
-        if: failure()
+        if: failure() && github.event_name == 'push'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
