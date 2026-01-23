@@ -1,3 +1,11 @@
+0.18.2
+------
+
+* Fix `in` and `not in` operators for date and datetime fields
+* Fix djangoql_syntax_help url in error_message.html (`#115`_)
+
+.. _#115: https://github.com/ivelum/djangoql/pull/115
+
 0.18.1
 ------
 
