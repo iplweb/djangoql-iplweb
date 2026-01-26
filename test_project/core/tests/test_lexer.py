@@ -69,7 +69,7 @@ class DjangoQLLexerTest(TestCase):
         for val in ('-0.5e+42', '42.0', '2E64', '2.71e-0002'):
             self.assert_output(self.lexer.input(val), [('FLOAT_VALUE', val)])
 
-    def test_string(self):
+    def test_string_double_quotes(self):
         for s in ('""', u'""', '"42"', r'"\t\n\u0042 ^"'):
             self.assert_output(
                 self.lexer.input(s),
