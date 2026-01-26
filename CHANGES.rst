@@ -1,3 +1,10 @@
+0.19.0
+------
+
+* Support single quotes too (#126)
+
+.. _#126: https://github.com/ivelum/djangoql/pull/126
+
 0.18.2
 ------
 
