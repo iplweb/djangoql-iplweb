@@ -1,3 +1,8 @@
+0.19.1
+------
+
+* Improve string quoting examples in syntax help
+
 0.19.0
 ------
 
