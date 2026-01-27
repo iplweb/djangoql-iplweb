@@ -335,12 +335,16 @@
         <tbody>
           <tr>
             <td>string</td>
-            <td nowrap><code>"this is a string"</code></td>
+            <td nowrap>
+                <code>"this is a string"</code><br>
+                <code>'another string'</code>
+            </td>
             <td>
-              Strings must be enclosed in double quotes, like
-              <code>"this"</code>. If your string contains double quote
-              symbols in it, you should escape them with a backslash,
-              like this: <code>"this is a string with \"quoted\" text"</code>.
+              Strings can be enclosed in either double quotes, like <code>"this"</code>,
+              or single quotes, like <code>'this'</code>. If your string contains the same
+              type of quote used to enclose it, you should escape those characters with a backslash,
+              for example <code>"this is a string with \"quoted\" text"</code>
+              or <code>'this is a string with \'quoted\' text'</code>.
             </td>
           </tr>
           <tr>
