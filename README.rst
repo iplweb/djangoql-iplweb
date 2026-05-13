@@ -41,6 +41,7 @@ Contents
 * `Installation`_
 * `Add it to your Django admin`_
 * `Using DjangoQL with the standard Django admin search`_
+* `Internationalization (i18n)`_
 * `Language reference`_
 * `DjangoQL Schema`_
 * `Custom search fields`_
@@ -112,6 +113,38 @@ also an option that controls if that checkbox is enabled by default -
 
 If you don't want two search modes, simply remove ``search_fields`` from your
 ModelAdmin class.
+
+Internationalization (i18n)
+---------------------------
+
+User-facing error messages produced by the lexer, parser, schema validator
+and suggestions API are wrapped with ``gettext_lazy`` and ship with translation
+catalogs for several locales. The locale used at runtime follows Django's
+standard request-locale resolution (``LANGUAGE_CODE``, ``LocaleMiddleware``,
+``Accept-Language``, etc.). If a translation is missing for a given message
+or locale, the original English string is used.
+
+Supplied locales:
+
+* ``pl`` - Polish (hand-written, native)
+* ``de`` - German (auto-translated, review welcome)
+* ``fr`` - French (auto-translated, review welcome)
+* ``es`` - Spanish (auto-translated, review welcome)
+* ``ru`` - Russian (auto-translated, review welcome)
+* ``uk`` - Ukrainian (auto-translated, review welcome)
+* ``pt_BR`` - Brazilian Portuguese (auto-translated, review welcome)
+* ``it`` - Italian (auto-translated, review welcome)
+* ``nl`` - Dutch (auto-translated, review welcome)
+* ``ja`` - Japanese (auto-translated, review welcome)
+* ``zh_Hans`` - Simplified Chinese (auto-translated, review welcome)
+
+Each locale lives under ``djangoql/locale/<code>/LC_MESSAGES/``. The ``.mo``
+files are shipped in the package, so no extra build step is required at
+install time. To add a new language or improve an existing one, edit the
+corresponding ``django.po`` file and run ``django-admin compilemessages``
+from the ``djangoql/`` directory (requires the ``gettext`` system package).
+PRs for native-speaker review of any auto-translated locale are very
+welcome.
 
 Language reference
 ------------------

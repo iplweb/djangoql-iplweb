@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import re
 from decimal import Decimal
 
+from django.utils.translation import gettext_lazy as _
+
 import ply.yacc as yacc
 
 from .ast import Comparison, Const, Expression, List, Logical, Name
@@ -208,13 +210,13 @@ class DjangoQLParser(object):
 
     def p_error(self, token):
         if token is None:
-            self.raise_syntax_error('Unexpected end of input')
+            self.raise_syntax_error(_('Unexpected end of input'))
         else:
             fragment = text_type(token.value)
             if len(fragment) > 20:
                 fragment = fragment[:17] + '...'
             self.raise_syntax_error(
-                'Syntax error at %s' % repr(fragment),
+                _('Syntax error at %s') % repr(fragment),
                 token=token,
             )
 

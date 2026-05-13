@@ -1,5 +1,6 @@
 recursive-include djangoql/static *.css *.png *.gif *.js *.map
 recursive-include djangoql/templates *.html
+recursive-include djangoql/locale *.po *.mo
 recursive-include test_project *.py *.html
 include README.rst LICENSE
 

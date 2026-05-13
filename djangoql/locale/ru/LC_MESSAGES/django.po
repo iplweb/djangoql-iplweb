@@ -1,0 +1,137 @@
+# DjangoQL Russian translation.
+# Copyright (C) 2026 ivelum and contributors
+# This file is distributed under the same license as the djangoql package.
+#
+# Auto-translated. Review by a native Russian speaker welcome — open a PR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangoql\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-05-13\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+
+#, python-format
+msgid "Line %(line)s, col %(col)s"
+msgstr "Строка %(line)s, столбец %(col)s"
+
+#, python-format
+msgid "Line %s"
+msgstr "Строка %s"
+
+#, python-format
+msgid "Illegal character %s"
+msgstr "Недопустимый символ %s"
+
+msgid "Unexpected end of input"
+msgstr "Неожиданный конец выражения"
+
+#, python-format
+msgid "Syntax error at %s"
+msgstr "Синтаксическая ошибка в %s"
+
+#, python-format
+msgid "Field %s is not nullable, can't compare it to None"
+msgstr "Поле %s не допускает значения null, нельзя сравнивать с None"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"nullable {field_type}\" type. It can be compared to "
+"{possible_values} or None, but not to {value}"
+msgstr ""
+"Поле \"{field}\" имеет тип \"nullable {field_type}\". Его можно сравнить с "
+"{possible_values} или с None, но не с {value}"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"{field_type}\" type. It can be compared to "
+"{possible_values}, but not to {value}"
+msgstr ""
+"Поле \"{field}\" имеет тип \"{field_type}\". Его можно сравнить с "
+"{possible_values}, но не с {value}"
+
+msgid "integer numbers"
+msgstr "целыми числами"
+
+msgid "floating point numbers"
+msgstr "числами с плавающей точкой"
+
+msgid "strings"
+msgstr "строками"
+
+msgid "True or False"
+msgstr "True или False"
+
+msgid "dates in \"YYYY-MM-DD\" format"
+msgstr "датами в формате \"YYYY-MM-DD\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to dates in \"YYYY-MM-DD\" format, but not "
+"to {value}"
+msgstr ""
+"Поле \"{field}\" можно сравнивать с датами в формате \"YYYY-MM-DD\", но не "
+"с {value}"
+
+msgid "timestamps in \"YYYY-MM-DD HH:MM\" format"
+msgstr "метками времени в формате \"YYYY-MM-DD HH:MM\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to timestamps in \"YYYY-MM-DD HH:MM\" "
+"format, but not to {value}"
+msgstr ""
+"Поле \"{field}\" можно сравнивать с метками времени в формате "
+"\"YYYY-MM-DD HH:MM\", но не с {value}"
+
+msgid "Schema must be initialized with a subclass of Django model"
+msgstr "Схема должна быть инициализирована подклассом модели Django"
+
+msgid "Either include or exclude can be specified, but not both"
+msgstr "Можно указать либо include, либо exclude, но не оба сразу"
+
+#, python-brace-format
+msgid "{model} can't be used with {schema_class} because it's excluded from it"
+msgstr ""
+"{model} нельзя использовать с {schema_class}, потому что он из неё исключён"
+
+#, python-brace-format
+msgid "Unknown field: {field}. Possible choices are: {choices}"
+msgstr "Неизвестное поле: {field}. Возможные варианты: {choices}"
+
+#, python-brace-format
+msgid ""
+"Related model {model} can be compared to None only, but not to {value_type}"
+msgstr ""
+"Связанная модель {model} может быть сравнена только с None, но не с "
+"{value_type}"
+
+msgid "DjangoQL syntax help"
+msgstr "Справка по синтаксису DjangoQL"
+
+msgid "page must be an integer starting from 1"
+msgstr "page должно быть целым числом, начиная с 1"
+
+msgid "DjangoQL schema is undefined"
+msgstr "Схема DjangoQL не определена"
+
+msgid "\"field\" parameter is required"
+msgstr "Параметр \"field\" обязателен"
+
+#, python-format
+msgid "Unknown model: %s"
+msgstr "Неизвестная модель: %s"
+
+#, python-format
+msgid "Unknown field: %s"
+msgstr "Неизвестное поле: %s"
+
+#, python-brace-format
+msgid "{model}.{field} doesn't support suggestions"
+msgstr "{model}.{field} не поддерживает подсказки"

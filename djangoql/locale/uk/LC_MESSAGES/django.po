@@ -1,0 +1,135 @@
+# DjangoQL Ukrainian translation.
+# Copyright (C) 2026 ivelum and contributors
+# This file is distributed under the same license as the djangoql package.
+#
+# Auto-translated. Review by a native Ukrainian speaker welcome — open a PR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangoql\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-05-13\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+
+#, python-format
+msgid "Line %(line)s, col %(col)s"
+msgstr "Рядок %(line)s, стовпець %(col)s"
+
+#, python-format
+msgid "Line %s"
+msgstr "Рядок %s"
+
+#, python-format
+msgid "Illegal character %s"
+msgstr "Недопустимий символ %s"
+
+msgid "Unexpected end of input"
+msgstr "Неочікуваний кінець введення"
+
+#, python-format
+msgid "Syntax error at %s"
+msgstr "Синтаксична помилка біля %s"
+
+#, python-format
+msgid "Field %s is not nullable, can't compare it to None"
+msgstr "Поле %s не може бути null, його не можна порівняти з None"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"nullable {field_type}\" type. It can be compared to "
+"{possible_values} or None, but not to {value}"
+msgstr ""
+"Поле \"{field}\" має тип \"nullable {field_type}\". Його можна порівняти з "
+"{possible_values} або з None, але не з {value}"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"{field_type}\" type. It can be compared to "
+"{possible_values}, but not to {value}"
+msgstr ""
+"Поле \"{field}\" має тип \"{field_type}\". Його можна порівняти з "
+"{possible_values}, але не з {value}"
+
+msgid "integer numbers"
+msgstr "цілими числами"
+
+msgid "floating point numbers"
+msgstr "числами з плаваючою комою"
+
+msgid "strings"
+msgstr "рядками"
+
+msgid "True or False"
+msgstr "True або False"
+
+msgid "dates in \"YYYY-MM-DD\" format"
+msgstr "датами у форматі \"YYYY-MM-DD\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to dates in \"YYYY-MM-DD\" format, but not "
+"to {value}"
+msgstr ""
+"Поле \"{field}\" можна порівняти з датами у форматі \"YYYY-MM-DD\", але не "
+"з {value}"
+
+msgid "timestamps in \"YYYY-MM-DD HH:MM\" format"
+msgstr "мітками часу у форматі \"YYYY-MM-DD HH:MM\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to timestamps in \"YYYY-MM-DD HH:MM\" "
+"format, but not to {value}"
+msgstr ""
+"Поле \"{field}\" можна порівняти з мітками часу у форматі "
+"\"YYYY-MM-DD HH:MM\", але не з {value}"
+
+msgid "Schema must be initialized with a subclass of Django model"
+msgstr "Схему треба ініціалізувати підкласом моделі Django"
+
+msgid "Either include or exclude can be specified, but not both"
+msgstr "Можна вказати або include, або exclude, але не обидва одночасно"
+
+#, python-brace-format
+msgid "{model} can't be used with {schema_class} because it's excluded from it"
+msgstr "{model} не може використовуватись з {schema_class}, бо її виключено"
+
+#, python-brace-format
+msgid "Unknown field: {field}. Possible choices are: {choices}"
+msgstr "Невідоме поле: {field}. Можливі варіанти: {choices}"
+
+#, python-brace-format
+msgid ""
+"Related model {model} can be compared to None only, but not to {value_type}"
+msgstr ""
+"Пов'язану модель {model} можна порівнювати лише з None, але не з {value_type}"
+
+msgid "DjangoQL syntax help"
+msgstr "Довідка з синтаксису DjangoQL"
+
+msgid "page must be an integer starting from 1"
+msgstr "page має бути цілим числом, що починається з 1"
+
+msgid "DjangoQL schema is undefined"
+msgstr "Схема DjangoQL не визначена"
+
+msgid "\"field\" parameter is required"
+msgstr "Параметр \"field\" є обов'язковим"
+
+#, python-format
+msgid "Unknown model: %s"
+msgstr "Невідома модель: %s"
+
+#, python-format
+msgid "Unknown field: %s"
+msgstr "Невідоме поле: %s"
+
+#, python-brace-format
+msgid "{model}.{field} doesn't support suggestions"
+msgstr "{model}.{field} не підтримує підказки"

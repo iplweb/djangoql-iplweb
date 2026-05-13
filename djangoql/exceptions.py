@@ -1,3 +1,6 @@
+from django.utils.translation import gettext
+
+
 class DjangoQLError(Exception):
     def __init__(self, message=None, value=None, line=None, column=None):
         self.value = value
@@ -8,9 +11,13 @@ class DjangoQLError(Exception):
     def __str__(self):
         message = super(DjangoQLError, self).__str__()
         if self.line:
-            position_info = 'Line %s' % self.line
             if self.column:
-                position_info += ', col %s' % self.column
+                position_info = gettext('Line %(line)s, col %(col)s') % {
+                    'line': self.line,
+                    'col': self.column,
+                }
+            else:
+                position_info = gettext('Line %s') % self.line
             return '%s: %s' % (position_info, message)
         else:
             return message

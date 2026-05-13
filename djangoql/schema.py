@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models import ManyToManyRel, ManyToOneRel
 from django.db.models.fields.related import ForeignObjectRel
 from django.utils.timezone import get_current_timezone
+from django.utils.translation import gettext_lazy as _
 
 from .ast import Comparison, Const, List, Logical, Name, Node
 from .compat import text_type
@@ -144,18 +145,18 @@ class DjangoQLField(object):
     def validate(self, value):
         if not self.nullable and value is None:
             raise DjangoQLSchemaError(
-                'Field %s is not nullable, '
-                "can't compare it to None" % self.name,
+                _("Field %s is not nullable, can't compare it to None")
+                % self.name,
             )
         if value is not None and type(value) not in self.value_types:
             if self.nullable:
-                msg = (
+                msg = _(
                     'Field "{field}" has "nullable {field_type}" type. '
                     'It can be compared to {possible_values} or None, '
                     'but not to {value}'
                 )
             else:
-                msg = (
+                msg = _(
                     'Field "{field}" has "{field_type}" type. It can '
                     'be compared to {possible_values}, '
                     'but not to {value}'
@@ -171,7 +172,7 @@ class DjangoQLField(object):
 class IntField(DjangoQLField):
     type = 'int'
     value_types = [int]
-    value_types_description = 'integer numbers'
+    value_types_description = _('integer numbers')
 
     def validate(self, value):
         """
@@ -183,13 +184,13 @@ class IntField(DjangoQLField):
 class FloatField(DjangoQLField):
     type = 'float'
     value_types = [int, float, Decimal]
-    value_types_description = 'floating point numbers'
+    value_types_description = _('floating point numbers')
 
 
 class StrField(DjangoQLField):
     type = 'str'
     value_types = [text_type]
-    value_types_description = 'strings'
+    value_types_description = _('strings')
 
     def get_options(self, search):
         choice_options = super(StrField, self).get_options(search)
@@ -208,13 +209,13 @@ class StrField(DjangoQLField):
 class BoolField(DjangoQLField):
     type = 'bool'
     value_types = [bool]
-    value_types_description = 'True or False'
+    value_types_description = _('True or False')
 
 
 class DateField(DjangoQLField):
     type = 'date'
     value_types = [text_type]
-    value_types_description = 'dates in "YYYY-MM-DD" format'
+    value_types_description = _('dates in "YYYY-MM-DD" format')
 
     def validate(self, value):
         super(DateField, self).validate(value)
@@ -222,11 +223,10 @@ class DateField(DjangoQLField):
             self.get_lookup_value(value)
         except ValueError:
             raise DjangoQLSchemaError(
-                'Field "%s" can be compared to dates in '
-                '"YYYY-MM-DD" format, but not to %s' % (
-                    self.name,
-                    repr(value),
-                ),
+                _(
+                    'Field "{field}" can be compared to dates in '
+                    '"YYYY-MM-DD" format, but not to {value}'
+                ).format(field=self.name, value=repr(value)),
             )
 
     def get_lookup_value(self, value):
@@ -246,7 +246,7 @@ class DateField(DjangoQLField):
 class DateTimeField(DjangoQLField):
     type = 'datetime'
     value_types = [text_type]
-    value_types_description = 'timestamps in "YYYY-MM-DD HH:MM" format'
+    value_types_description = _('timestamps in "YYYY-MM-DD HH:MM" format')
 
     def validate(self, value):
         super(DateTimeField, self).validate(value)
@@ -254,11 +254,10 @@ class DateTimeField(DjangoQLField):
             self.get_lookup_value(value)
         except ValueError:
             raise DjangoQLSchemaError(
-                'Field "%s" can be compared to timestamps in '
-                '"YYYY-MM-DD HH:MM" format, but not to %s' % (
-                    self.name,
-                    repr(value),
-                ),
+                _(
+                    'Field "{field}" can be compared to timestamps in '
+                    '"YYYY-MM-DD HH:MM" format, but not to {value}'
+                ).format(field=self.name, value=repr(value)),
             )
 
     def get_lookup_value(self, value):
@@ -329,18 +328,18 @@ class DjangoQLSchema(object):
     def __init__(self, model):
         if not inspect.isclass(model) or not issubclass(model, models.Model):
             raise DjangoQLSchemaError(
-                'Schema must be initialized with a subclass of Django model',
+                _('Schema must be initialized with a subclass of Django model'),
             )
         if self.include and self.exclude:
             raise DjangoQLSchemaError(
-                'Either include or exclude can be specified, but not both',
+                _('Either include or exclude can be specified, but not both'),
             )
         if self.excluded(model):
             raise DjangoQLSchemaError(
-                "%s can't be used with %s because it's excluded from it" % (
-                    model,
-                    self.__class__,
-                ),
+                _(
+                    "{model} can't be used with {schema_class} because "
+                    "it's excluded from it"
+                ).format(model=model, schema_class=self.__class__),
             )
         self.current_model = model
         self._models = None
@@ -470,9 +469,10 @@ class DjangoQLSchema(object):
             field = self.models[model].get(name_part)
             if not field:
                 raise DjangoQLSchemaError(
-                    'Unknown field: %s. Possible choices are: %s' % (
-                        name_part,
-                        ', '.join(sorted(self.models[model].keys())),
+                    _('Unknown field: {field}. Possible choices are: '
+                      '{choices}').format(
+                        field=name_part,
+                        choices=', '.join(sorted(self.models[model].keys())),
                     ),
                 )
             if field.type == 'relation':
@@ -499,8 +499,11 @@ class DjangoQLSchema(object):
         if field is None:
             if value is not None:
                 raise DjangoQLSchemaError(
-                    'Related model %s can be compared to None only, but not to '
-                    '%s' % (node.left.value, type(value).__name__),
+                    _('Related model {model} can be compared to None only, '
+                      'but not to {value_type}').format(
+                        model=node.left.value,
+                        value_type=type(value).__name__,
+                    ),
                 )
         else:
             values = value if isinstance(node.right, List) else [value]

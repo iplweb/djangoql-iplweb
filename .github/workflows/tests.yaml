@@ -171,9 +171,14 @@ jobs:
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip|${{ matrix.python }}|${{ matrix.django }}
+      - name: install gettext (required by django compilemessages)
+        run: sudo apt-get update && sudo apt-get install -y gettext
       - run: pip install PLY
       - run: pip install Django==${{ matrix.django }}
       - run: pip install -e .
+      - name: compile translation catalogs
+        working-directory: djangoql
+        run: django-admin compilemessages
       - run: python test_project/manage.py test core.tests
 
       # Send notification on build failure
