@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from django.utils.translation import gettext_lazy as _
+
 import ply.lex as lex
 from ply.lex import TOKEN
 
@@ -166,7 +168,7 @@ class DjangoQLLexer(object):
 
     def t_error(self, t):
         raise DjangoQLLexerError(
-            message='Illegal character %s' % repr(t.value[0]),
+            message=_('Illegal character %s') % repr(t.value[0]),
             value=t.value,
             line=t.lineno,
             column=self.find_column(t),

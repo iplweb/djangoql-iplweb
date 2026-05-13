@@ -1,0 +1,37 @@
+# Pre-commit runs on STAGED files only — exactly what you want: changed
+# files get linted before they land, the rest of the repo is untouched.
+#
+# Install:  pip install pre-commit && pre-commit install
+# Manual:   pre-commit run                  # staged files only
+#           pre-commit run --all-files      # everything (escape hatch)
+#
+# Versions are bumped past requirements-dev.txt so the hooks install on
+# modern Python (3.10+). The rules enforced are the same ones CI checks
+# (the relevant codes — C812, E501, A003, isort import grouping — have
+# not changed between the pinned and bumped versions). If you ever see a
+# pre-commit failure CI did not catch, the code is still wrong; fix it
+# (or add an explicit ignore to setup.cfg) rather than rolling back here.
+
+repos:
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-builtins==2.1.0  # pre-A005; matches CI behaviour
+          - flake8-commas==4.0.0
+          - flake8-print==5.0.0
+          - flake8-quotes==3.4.0
+        # Mirror setup.cfg `exclude` so pre-commit and CI lint the same set.
+        exclude: |
+          (?x)^(
+            djangoql/parsetab\.py
+            | .*/migrations/.*
+            | test_project/manage\.py
+          )$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        exclude: ^.*/migrations/.*$

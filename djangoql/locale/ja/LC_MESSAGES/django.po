@@ -1,0 +1,133 @@
+# DjangoQL Japanese translation.
+# Copyright (C) 2026 ivelum and contributors
+# This file is distributed under the same license as the djangoql package.
+#
+# Auto-translated. Review by a native Japanese speaker welcome — open a PR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangoql\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-05-13\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#, python-format
+msgid "Line %(line)s, col %(col)s"
+msgstr "%(line)s 行 %(col)s 列"
+
+#, python-format
+msgid "Line %s"
+msgstr "%s 行"
+
+#, python-format
+msgid "Illegal character %s"
+msgstr "不正な文字 %s"
+
+msgid "Unexpected end of input"
+msgstr "入力が予期せず終了しました"
+
+#, python-format
+msgid "Syntax error at %s"
+msgstr "%s で構文エラー"
+
+#, python-format
+msgid "Field %s is not nullable, can't compare it to None"
+msgstr "フィールド %s は null を許可していないため、None と比較できません"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"nullable {field_type}\" type. It can be compared to "
+"{possible_values} or None, but not to {value}"
+msgstr ""
+"フィールド \"{field}\" は \"nullable {field_type}\" 型です。"
+"{possible_values} または None と比較できますが、{value} とは比較できません"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"{field_type}\" type. It can be compared to "
+"{possible_values}, but not to {value}"
+msgstr ""
+"フィールド \"{field}\" は \"{field_type}\" 型です。{possible_values} と"
+"比較できますが、{value} とは比較できません"
+
+msgid "integer numbers"
+msgstr "整数"
+
+msgid "floating point numbers"
+msgstr "浮動小数点数"
+
+msgid "strings"
+msgstr "文字列"
+
+msgid "True or False"
+msgstr "True または False"
+
+msgid "dates in \"YYYY-MM-DD\" format"
+msgstr "\"YYYY-MM-DD\" 形式の日付"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to dates in \"YYYY-MM-DD\" format, but not "
+"to {value}"
+msgstr ""
+"フィールド \"{field}\" は \"YYYY-MM-DD\" 形式の日付と比較できますが、"
+"{value} とは比較できません"
+
+msgid "timestamps in \"YYYY-MM-DD HH:MM\" format"
+msgstr "\"YYYY-MM-DD HH:MM\" 形式のタイムスタンプ"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to timestamps in \"YYYY-MM-DD HH:MM\" "
+"format, but not to {value}"
+msgstr ""
+"フィールド \"{field}\" は \"YYYY-MM-DD HH:MM\" 形式のタイムスタンプと"
+"比較できますが、{value} とは比較できません"
+
+msgid "Schema must be initialized with a subclass of Django model"
+msgstr "スキーマは Django モデルのサブクラスで初期化する必要があります"
+
+msgid "Either include or exclude can be specified, but not both"
+msgstr "include または exclude のどちらか一方のみ指定できます"
+
+#, python-brace-format
+msgid "{model} can't be used with {schema_class} because it's excluded from it"
+msgstr "{model} は {schema_class} から除外されているため使用できません"
+
+#, python-brace-format
+msgid "Unknown field: {field}. Possible choices are: {choices}"
+msgstr "不明なフィールド: {field}. 利用可能な選択肢: {choices}"
+
+#, python-brace-format
+msgid ""
+"Related model {model} can be compared to None only, but not to {value_type}"
+msgstr "関連モデル {model} は None としか比較できません ({value_type} とは比較できません)"
+
+msgid "DjangoQL syntax help"
+msgstr "DjangoQL 構文ヘルプ"
+
+msgid "page must be an integer starting from 1"
+msgstr "page は 1 以上の整数である必要があります"
+
+msgid "DjangoQL schema is undefined"
+msgstr "DjangoQL スキーマが定義されていません"
+
+msgid "\"field\" parameter is required"
+msgstr "\"field\" パラメータは必須です"
+
+#, python-format
+msgid "Unknown model: %s"
+msgstr "不明なモデル: %s"
+
+#, python-format
+msgid "Unknown field: %s"
+msgstr "不明なフィールド: %s"
+
+#, python-brace-format
+msgid "{model}.{field} doesn't support suggestions"
+msgstr "{model}.{field} は候補表示をサポートしていません"

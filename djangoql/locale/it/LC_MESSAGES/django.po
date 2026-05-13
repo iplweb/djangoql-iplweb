@@ -1,0 +1,135 @@
+# DjangoQL Italian translation.
+# Copyright (C) 2026 ivelum and contributors
+# This file is distributed under the same license as the djangoql package.
+#
+# Auto-translated. Review by a native Italian speaker welcome — open a PR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangoql\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-05-13\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#, python-format
+msgid "Line %(line)s, col %(col)s"
+msgstr "Riga %(line)s, col. %(col)s"
+
+#, python-format
+msgid "Line %s"
+msgstr "Riga %s"
+
+#, python-format
+msgid "Illegal character %s"
+msgstr "Carattere non valido %s"
+
+msgid "Unexpected end of input"
+msgstr "Fine input inattesa"
+
+#, python-format
+msgid "Syntax error at %s"
+msgstr "Errore di sintassi in %s"
+
+#, python-format
+msgid "Field %s is not nullable, can't compare it to None"
+msgstr "Il campo %s non ammette null, non può essere confrontato con None"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"nullable {field_type}\" type. It can be compared to "
+"{possible_values} or None, but not to {value}"
+msgstr ""
+"Il campo \"{field}\" è di tipo \"nullable {field_type}\". Può essere "
+"confrontato con {possible_values} o con None, ma non con {value}"
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" has \"{field_type}\" type. It can be compared to "
+"{possible_values}, but not to {value}"
+msgstr ""
+"Il campo \"{field}\" è di tipo \"{field_type}\". Può essere confrontato "
+"con {possible_values}, ma non con {value}"
+
+msgid "integer numbers"
+msgstr "numeri interi"
+
+msgid "floating point numbers"
+msgstr "numeri in virgola mobile"
+
+msgid "strings"
+msgstr "stringhe"
+
+msgid "True or False"
+msgstr "True o False"
+
+msgid "dates in \"YYYY-MM-DD\" format"
+msgstr "date in formato \"YYYY-MM-DD\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to dates in \"YYYY-MM-DD\" format, but not "
+"to {value}"
+msgstr ""
+"Il campo \"{field}\" può essere confrontato con date in formato "
+"\"YYYY-MM-DD\", ma non con {value}"
+
+msgid "timestamps in \"YYYY-MM-DD HH:MM\" format"
+msgstr "timestamp in formato \"YYYY-MM-DD HH:MM\""
+
+#, python-brace-format
+msgid ""
+"Field \"{field}\" can be compared to timestamps in \"YYYY-MM-DD HH:MM\" "
+"format, but not to {value}"
+msgstr ""
+"Il campo \"{field}\" può essere confrontato con timestamp in formato "
+"\"YYYY-MM-DD HH:MM\", ma non con {value}"
+
+msgid "Schema must be initialized with a subclass of Django model"
+msgstr "Lo schema deve essere inizializzato con una sottoclasse di un modello Django"
+
+msgid "Either include or exclude can be specified, but not both"
+msgstr "È possibile specificare include oppure exclude, ma non entrambi"
+
+#, python-brace-format
+msgid "{model} can't be used with {schema_class} because it's excluded from it"
+msgstr "{model} non può essere usato con {schema_class} perché è escluso da esso"
+
+#, python-brace-format
+msgid "Unknown field: {field}. Possible choices are: {choices}"
+msgstr "Campo sconosciuto: {field}. Opzioni disponibili: {choices}"
+
+#, python-brace-format
+msgid ""
+"Related model {model} can be compared to None only, but not to {value_type}"
+msgstr ""
+"Il modello correlato {model} può essere confrontato solo con None, ma non "
+"con {value_type}"
+
+msgid "DjangoQL syntax help"
+msgstr "Guida sintassi DjangoQL"
+
+msgid "page must be an integer starting from 1"
+msgstr "page deve essere un intero a partire da 1"
+
+msgid "DjangoQL schema is undefined"
+msgstr "Lo schema DjangoQL non è definito"
+
+msgid "\"field\" parameter is required"
+msgstr "Il parametro \"field\" è obbligatorio"
+
+#, python-format
+msgid "Unknown model: %s"
+msgstr "Modello sconosciuto: %s"
+
+#, python-format
+msgid "Unknown field: %s"
+msgstr "Campo sconosciuto: %s"
+
+#, python-brace-format
+msgid "{model}.{field} doesn't support suggestions"
+msgstr "{model}.{field} non supporta i suggerimenti"

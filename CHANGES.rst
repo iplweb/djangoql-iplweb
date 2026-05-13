@@ -1,3 +1,11 @@
+Unreleased
+----------
+
+* Add internationalization (i18n) support for user-facing error messages
+  produced by the lexer, parser, schema validator and suggestions API.
+  Ships translation catalogs for ``pl``, ``de``, ``fr``, ``es``, ``ru``,
+  ``uk``, ``pt_BR``, ``it``, ``nl``, ``ja`` and ``zh_Hans``.
+
 0.19.1
 ------
 
