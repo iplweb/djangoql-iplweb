@@ -153,13 +153,13 @@ class DjangoQLField(object):
                 msg = _(
                     'Field "{field}" has "nullable {field_type}" type. '
                     'It can be compared to {possible_values} or None, '
-                    'but not to {value}'
+                    'but not to {value}',
                 )
             else:
                 msg = _(
                     'Field "{field}" has "{field_type}" type. It can '
                     'be compared to {possible_values}, '
-                    'but not to {value}'
+                    'but not to {value}',
                 )
             raise DjangoQLSchemaError(msg.format(
                 field=self.name,
@@ -225,7 +225,7 @@ class DateField(DjangoQLField):
             raise DjangoQLSchemaError(
                 _(
                     'Field "{field}" can be compared to dates in '
-                    '"YYYY-MM-DD" format, but not to {value}'
+                    '"YYYY-MM-DD" format, but not to {value}',
                 ).format(field=self.name, value=repr(value)),
             )
 
@@ -256,7 +256,7 @@ class DateTimeField(DjangoQLField):
             raise DjangoQLSchemaError(
                 _(
                     'Field "{field}" can be compared to timestamps in '
-                    '"YYYY-MM-DD HH:MM" format, but not to {value}'
+                    '"YYYY-MM-DD HH:MM" format, but not to {value}',
                 ).format(field=self.name, value=repr(value)),
             )
 
@@ -338,7 +338,7 @@ class DjangoQLSchema(object):
             raise DjangoQLSchemaError(
                 _(
                     "{model} can't be used with {schema_class} because "
-                    "it's excluded from it"
+                    "it's excluded from it",
                 ).format(model=model, schema_class=self.__class__),
             )
         self.current_model = model
