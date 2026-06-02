@@ -1,37 +1,41 @@
-# Pre-commit runs on STAGED files only — exactly what you want: changed
-# files get linted before they land, the rest of the repo is untouched.
+# Pre-commit runs on STAGED files only — changed files get linted before
+# they land, the rest of the repo is untouched.
 #
-# Install:  pip install pre-commit && pre-commit install
+# Install:  uv sync --all-extras && pre-commit install
 # Manual:   pre-commit run                  # staged files only
 #           pre-commit run --all-files      # everything (escape hatch)
 #
-# Versions are bumped past requirements-dev.txt so the hooks install on
-# modern Python (3.10+). The rules enforced are the same ones CI checks
-# (the relevant codes — C812, E501, A003, isort import grouping — have
-# not changed between the pinned and bumped versions). If you ever see a
-# pre-commit failure CI did not catch, the code is still wrong; fix it
-# (or add an explicit ignore to setup.cfg) rather than rolling back here.
+# Ruff replaces the previous flake8 + isort stack. The enforced rules are
+# mirrored in pyproject.toml [tool.ruff] (E/F/W + flake8-quotes Q +
+# flake8-print T20 + flake8-builtins A + isort I), so lint coverage is
+# preserved. pyupgrade / django-upgrade modernize syntax, but only on the
+# files you actually stage — never run them across the whole repo.
 
 repos:
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-builtins==2.1.0  # pre-A005; matches CI behaviour
-          - flake8-commas==4.0.0
-          - flake8-print==5.0.0
-          - flake8-quotes==3.4.0
-        # Mirror setup.cfg `exclude` so pre-commit and CI lint the same set.
-        exclude: |
-          (?x)^(
-            djangoql/parsetab\.py
-            | .*/migrations/.*
-            | test_project/manage\.py
-          )$
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: detect-private-key
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
     hooks:
-      - id: isort
-        exclude: ^.*/migrations/.*$
+      - id: pyupgrade
+        args: [--py310-plus]  # floor from requires-python = ">=3.10"
+
+  - repo: https://github.com/adamchainz/django-upgrade
+    rev: 1.30.0
+    hooks:
+      - id: django-upgrade
+        args: [--target-version, "4.2"]  # floor from the supported Django range
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

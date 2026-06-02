@@ -33,12 +33,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "flake8",
-    "flake8-builtins",
-    "flake8-commas",
-    "flake8-print",
-    "flake8-quotes",
-    "isort",
+    "ruff",
+    "pre-commit",
     "bumpver",
 ]
 
@@ -52,6 +48,52 @@ packages = ["djangoql"]
 
 [tool.setuptools.dynamic]
 version = {attr = "djangoql.__version__"}
+
+[tool.ruff]
+target-version = "py310"
+line-length = 80
+extend-exclude = [
+    "djangoql/parsetab.py",
+    "*/migrations/*",
+    "test_project/manage.py",
+]
+
+[tool.ruff.lint]
+# Mirror the previous flake8 stack so lint coverage is preserved:
+#   E/W/F = pycodestyle + pyflakes, Q = flake8-quotes, T20 = flake8-print,
+#   A = flake8-builtins (A003 ignored, as in the old setup.cfg),
+#   I = import sorting (replaces isort).
+select = ["E", "F", "W", "Q", "T20", "A", "I"]
+ignore = ["A003"]
+
+[tool.ruff.lint.isort]
+# Reproduce the old isort layout: a dedicated DJANGO section between the
+# standard library and third-party imports, two blank lines after imports.
+known-first-party = ["core", "test_project"]
+lines-after-imports = 2
+section-order = [
+    "future",
+    "standard-library",
+    "django",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.isort.sections]
+django = ["django"]
+
+[tool.ruff.lint.flake8-quotes]
+# Inline strings are single-quoted throughout (the old flake8-quotes default);
+# multiline strings/docstrings use double quotes (82 vs 2 in the codebase, and
+# required for ruff-format compatibility).
+inline-quotes = "single"
+multiline-quotes = "double"
+
+[tool.ruff.format]
+# The codebase uses single quotes throughout; keep it that way so editing a
+# file doesn't flip every string to double quotes.
+quote-style = "single"
 
 [tool.bumpver]
 current_version = "0.19.1"
