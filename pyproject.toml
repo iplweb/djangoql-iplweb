@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "djangoql"
+dynamic = ["version"]
+description = "DjangoQL: Advanced search language for Django"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Denis Stebunov", email = "support@ivelum.com"}]
+keywords = ["django", "search", "query-language", "admin", "autocomplete"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "ply>=3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "flake8-builtins",
+    "flake8-commas",
+    "flake8-print",
+    "flake8-quotes",
+    "isort",
+]
+
+[project.urls]
+Homepage = "https://github.com/ivelum/djangoql/"
+Repository = "https://github.com/ivelum/djangoql/"
+Issues = "https://github.com/ivelum/djangoql/issues"
+
+[tool.setuptools]
+packages = ["djangoql"]
+
+[tool.setuptools.dynamic]
+version = {attr = "djangoql.__version__"}
+
+[tool.setuptools.package-data]
+djangoql = [
+    "static/**/*.css",
+    "static/**/*.js",
+    "static/**/*.map",
+    "static/**/*.png",
+    "static/**/*.gif",
+    "templates/**/*.html",
+    "locale/**/*.po",
+    "locale/**/*.mo",
+]
