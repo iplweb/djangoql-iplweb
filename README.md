@@ -7,17 +7,24 @@
 
 Advanced search language for Django, with auto-completion. Supports logical operators, parenthesis, table joins, and works with any Django model. Tested on Python 3.10–3.14, Django 5.2 and 6.0. The auto-completion feature has been tested in Chrome, Firefox, Safari, IE9+.
 
-> This is the **iplweb** fork of [DjangoQL](https://github.com/ivelum/djangoql) by ivelum, adding internationalization (i18n) and modernized packaging/tooling. It is published on PyPI as **`djangoql-iplweb`**, but the import name stays `djangoql` (so `INSTALLED_APPS` and `import djangoql` are unchanged).
+> **This is a community fork.** `djangoql-iplweb` is a fork of the original
+> [**DjangoQL** by ivelum](https://github.com/ivelum/djangoql) — install the
+> upstream package from [`djangoql` on PyPI](https://pypi.org/project/djangoql/).
+> This fork adds internationalization (i18n) of error messages and modernized
+> packaging/tooling.
+>
+> These changes are offered back to the upstream project. **If the original
+> maintainers merge them, please switch back to the upstream
+> [`djangoql`](https://pypi.org/project/djangoql/) package** — this fork exists
+> only to make the improvements available in the meantime, and will defer to
+> upstream once they land there.
+>
+> It is published on PyPI as **`djangoql-iplweb`**, but the import name stays
+> `djangoql` (so `INSTALLED_APPS` and `import djangoql` are unchanged).
 
 See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 
 ![DjangoQL auto-completion example](https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/djangoql/static/djangoql/img/completion_example_scaled.png)
-
-DjangoQL is used by:
-
-[<img src="https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/assets/redhat.svg" style="width:22.0%" alt="logo1" />](https://www.redhat.com) [<img src="https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/assets/teamplify.svg" style="width:22.0%" alt="logo2" />](https://teamplify.com) [<img src="https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/assets/police1.svg" style="width:22.0%" alt="logo3" />](https://www.police1.com) [<img src="https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/assets/15-five.svg" style="width:22.0%" alt="logo4" />](https://www.15five.com)
-
-Is your project using DjangoQL? Please submit a PR and let us know!
 
 ## Contents
 
