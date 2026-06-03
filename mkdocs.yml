@@ -1,5 +1,6 @@
 site_name: DjangoQL
 site_description: Advanced search language for Django, with Django admin integration.
+site_url: https://iplweb.github.io/djangoql-iplweb/
 repo_url: https://github.com/iplweb/djangoql-iplweb
 docs_dir: docs
 

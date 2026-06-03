@@ -66,17 +66,18 @@ For full setup instructions and usage examples, see the [Documentation](#documen
 
 ## Documentation
 
-Full documentation lives in the [`docs/`](docs/) directory (built with MkDocs).
-Key pages:
+📖 **Full documentation: https://iplweb.github.io/djangoql-iplweb/**
 
-- [Installation](docs/installation.md) — complete setup guide
-- [Django admin integration](docs/admin.md) — `DjangoQLSearchMixin` and admin search modes
-- [Language reference](docs/language.md) — query syntax, operators, and examples
-- [Schema & custom fields](docs/schema.md) — restrict searchable models/fields, custom search fields
-- [Derived fields](docs/derived-fields.md) — search by annotations and computed values
-- [Outside the admin](docs/queryset.md) — `DjangoQLQuerySet` and `apply_search()`
-- [Completion widget](docs/completion-widget.md) — standalone JS widget outside the admin
-- [Internationalization](docs/i18n.md) — i18n support and supplied locales
+The site is built with MkDocs from the [`docs/`](docs/) directory. Key pages:
+
+- [Installation](https://iplweb.github.io/djangoql-iplweb/installation/) — complete setup guide
+- [Django admin integration](https://iplweb.github.io/djangoql-iplweb/admin/) — `DjangoQLSearchMixin` and admin search modes
+- [Language reference](https://iplweb.github.io/djangoql-iplweb/language/) — query syntax, operators, and examples
+- [Schema & custom fields](https://iplweb.github.io/djangoql-iplweb/schema/) — restrict searchable models/fields, custom search fields
+- [Derived fields](https://iplweb.github.io/djangoql-iplweb/derived-fields/) — date/time parts, relation aggregates, custom search logic
+- [Outside the admin](https://iplweb.github.io/djangoql-iplweb/queryset/) — `DjangoQLQuerySet` and `apply_search()`
+- [Completion widget](https://iplweb.github.io/djangoql-iplweb/completion-widget/) — standalone JS widget outside the admin
+- [Internationalization](https://iplweb.github.io/djangoql-iplweb/i18n/) — i18n support and supplied locales
 
 ## Supported by
 
