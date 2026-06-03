@@ -160,3 +160,50 @@ class DatePartsTest(TestCase):
         morning.delete()
         evening.delete()
         author.delete()
+
+
+class _CountSchemaFK(DjangoQLSchema):
+    """Hand-built schema adding only User.book__count (reverse FK)."""
+
+    def get_fields(self, model):
+        from djangoql.extras import CountField, _owner_lookup
+
+        fields = list(super().get_fields(model))
+        if model == User:
+            rel = User._meta.get_field('book')  # ManyToOneRel
+            fields.append(
+                CountField(
+                    model=User,
+                    relation_name='book',
+                    related_model=rel.related_model,
+                    owner_lookup=_owner_lookup(rel),
+                    name='book__count',
+                )
+            )
+        return fields
+
+
+class CountFKTest(TestCase):
+    def setUp(self):
+        self.prolific = User.objects.create(username='prolific')
+        self.quiet = User.objects.create(username='quiet')
+        for i in range(3):
+            Book.objects.create(name='b%d' % i, author=self.prolific)
+
+    def _usernames(self, search):
+        qs = apply_search(User.objects.all(), search, schema=_CountSchemaFK)
+        return set(qs.values_list('username', flat=True))
+
+    def test_count_gt(self):
+        self.assertEqual(self._usernames('book__count > 2'), {'prolific'})
+
+    def test_count_zero_matches_empty(self):
+        # Coalesce(...,0) makes "= 0" match users with no books.
+        self.assertIn('quiet', self._usernames('book__count = 0'))
+        self.assertNotIn('prolific', self._usernames('book__count = 0'))
+
+    def test_count_lazy(self):
+        qs = apply_search(
+            User.objects.all(), 'username = "x"', schema=_CountSchemaFK
+        )
+        self.assertEqual(qs.query.annotations, {})

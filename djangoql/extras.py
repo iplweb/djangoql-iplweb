@@ -1,6 +1,11 @@
 from datetime import datetime
 
 from django.db import models
+from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import IntegerField as ORMIntegerField
+from django.db.models.constants import LOOKUP_SEP
+from django.db.models.fields.related import ForeignObjectRel
+from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import DjangoQLSchemaError
@@ -76,6 +81,97 @@ class TimeExtractField(DjangoQLField):
                     'format, but not to {value}',
                 ).format(field=self.name, value=repr(value)),
             )
+
+
+def _owner_lookup(relation_field):
+    """
+    Given a to-many relation entry from ``model._meta.get_fields()``, return the
+    lookup used to filter the *related* model's rows by the owning instance,
+    for building a correlated subquery.
+
+    - Reverse relations (ForeignObjectRel: reverse FK / reverse M2M): the
+      forward field lives on the related model -> use its name.
+    - Forward M2M (ManyToManyField on the searched model): use the reverse
+      query name back to the owner.
+    """
+    if isinstance(relation_field, ForeignObjectRel):
+        return relation_field.field.name
+    return relation_field.related_query_name()
+
+
+class AggregateField(IntField):
+    """
+    Base class for subquery-backed relation aggregates. Subclasses set
+    ``aggregate`` (an aggregate class) and ``aggregate_name``.
+
+    The user-facing field name (e.g. ``book__count``) maps to a collision-safe
+    annotation alias (``djangoql_book_count``); the filter is applied to the
+    alias, while the path is used to correlate the subquery.
+    """
+
+    aggregate = None
+    aggregate_name = None
+
+    def __init__(
+        self,
+        model,
+        relation_name,
+        related_model,
+        owner_lookup,
+        name,
+        source_field=None,
+        nullable=True,
+        suggested=True,
+    ):
+        self.relation_name = relation_name
+        self.related_model = related_model
+        self.owner_lookup = owner_lookup
+        self.source_field = source_field
+        super().__init__(
+            model=model,
+            name=name,
+            nullable=nullable,
+            suggested=suggested,
+        )
+
+    def annotation_alias(self, path):
+        joined = '_'.join(list(path) + [self.name])
+        return 'djangoql_' + joined.replace('__', '_')
+
+    def output_field(self):
+        return ORMIntegerField()
+
+    def build_expression(self, path):
+        return self._subquery(path)
+
+    def _subquery(self, path):
+        outer = LOOKUP_SEP.join(list(path) + ['pk'])
+        rel_qs = (
+            self.related_model._base_manager.order_by()
+            .filter(**{self.owner_lookup: OuterRef(outer)})
+            .values(self.owner_lookup)
+            .annotate(_agg=self.aggregate(self.source_field or 'pk'))
+            .values('_agg')
+        )
+        return Subquery(rel_qs, output_field=self.output_field())
+
+    def get_annotations(self, path):
+        return {self.annotation_alias(path): self.build_expression(path)}
+
+    def get_lookup(self, path, operator, value):
+        alias = self.annotation_alias(path)
+        op, invert = self.get_operator(operator)
+        q = Q(**{f'{alias}{op}': self.get_lookup_value(value)})
+        return ~q if invert else q
+
+
+class CountField(AggregateField):
+    aggregate = Count
+    aggregate_name = 'count'
+
+    def build_expression(self, path):
+        # Coalesce to 0 so "<rel>__count = 0" matches rows with no relations.
+        return Coalesce(self._subquery(path), 0)
 
 
 class DatePartsSchemaMixin:
