@@ -1,4 +1,6 @@
 # Tests for the core `suggested` flag and djangoql.extras derived fields.
+from datetime import datetime
+
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.test import TestCase
@@ -96,16 +98,12 @@ class DatePartsTest(TestCase):
         Book.objects.create(
             name='Y2020',
             author=author,
-            written=make_aware(
-                __import__('datetime').datetime(2020, 6, 15, 12, 0)
-            ),
+            written=make_aware(datetime(2020, 6, 15, 12, 0)),
         )
         Book.objects.create(
             name='Y2021',
             author=author,
-            written=make_aware(
-                __import__('datetime').datetime(2021, 6, 15, 12, 0)
-            ),
+            written=make_aware(datetime(2021, 6, 15, 12, 0)),
         )
         from djangoql.extras import DatePartsSchemaMixin
 
@@ -132,3 +130,33 @@ class DatePartsTest(TestCase):
     def test_datetime_date_extract(self):
         where = self._where('written__date = "2020-01-01"').lower()
         self.assertIn('date', where)
+
+    def test_datetime_time_extract(self):
+        from django.utils.timezone import make_aware
+
+        author = User.objects.create_user('testauthor_time')
+        morning = Book.objects.create(
+            name='morn',
+            author=author,
+            written=make_aware(datetime(2020, 1, 1, 9, 30)),
+        )
+        evening = Book.objects.create(
+            name='eve',
+            author=author,
+            written=make_aware(datetime(2020, 1, 1, 18, 45)),
+        )
+        from djangoql.extras import DatePartsSchemaMixin
+
+        class S(DatePartsSchemaMixin, DjangoQLSchema):
+            pass
+
+        qs = apply_search(
+            Book.objects.all(), 'written__time = "09:30"', schema=S
+        )
+        names = set(qs.values_list('name', flat=True))
+        self.assertIn('morn', names)
+        self.assertNotIn('eve', names)
+        # Clean up to avoid leaking into other tests
+        morning.delete()
+        evening.delete()
+        author.delete()

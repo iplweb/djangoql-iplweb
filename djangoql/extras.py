@@ -43,7 +43,7 @@ class TimeExtractField(DjangoQLField):
 
     type = 'time'
     value_types = [str]
-    value_types_description = _('times in "HH:MM" format')
+    value_types_description = _('times in "HH:MM[:SS]" format')
 
     def __init__(self, base_field, model=None, nullable=False):
         self.base_field = base_field
@@ -54,6 +54,12 @@ class TimeExtractField(DjangoQLField):
         )
 
     def get_lookup_value(self, value):
+        if isinstance(value, list):
+            return [self._parse_time(v) for v in value]
+        return self._parse_time(value)
+
+    @staticmethod
+    def _parse_time(value):
         if not value:
             return None
         mask = '%H:%M:%S' if value.count(':') > 1 else '%H:%M'
@@ -66,7 +72,7 @@ class TimeExtractField(DjangoQLField):
         except ValueError:
             raise DjangoQLSchemaError(
                 _(
-                    'Field "{field}" can be compared to times in "HH:MM" '
+                    'Field "{field}" can be compared to times in "HH:MM[:SS]" '
                     'format, but not to {value}',
                 ).format(field=self.name, value=repr(value)),
             )
