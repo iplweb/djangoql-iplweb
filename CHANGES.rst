@@ -1,3 +1,21 @@
+0.22.0 (unreleased)
+-------------------
+
+* **Breaking (derived fields):** numeric relation aggregates now use dot
+  syntax — ``<rel>.<numfield>__{sum,avg,min,max}`` (e.g. ``book.rating__sum``)
+  instead of the flat ``<rel>__<numfield>__sum``. This reads consistently with
+  DjangoQL's dot navigation and stops the parent model's field list from
+  exploding. Relation **count** keeps its flat name ``<rel>__count``.
+* **Derived fields are hidden from autocomplete.** All generated derived fields
+  ship with ``suggested=False`` (relation count, date/time parts), and numeric
+  aggregates are synthesized on demand so they are never listed at all. They
+  remain fully usable in queries.
+* The **"Unknown field" error** no longer dumps the hidden derived fields into
+  its "Possible choices" list. It lists only the suggested fields and appends a
+  short hint describing the derived-field syntax with a couple of real examples
+  for the current model. New overridable schema hooks ``resolve_unknown()`` and
+  ``unknown_field_hint()`` back this behavior.
+
 0.21.0
 ------
 

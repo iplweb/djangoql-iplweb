@@ -489,23 +489,66 @@ class DjangoQLSchema:
     def resolve_name(self, name):
         assert isinstance(name, Name)
         model = self.model_label(self.current_model)
+        model_cls = self.current_model
         field = None
+        prev_relation = None
         for name_part in name.parts:
             field = self.models[model].get(name_part)
-            if not field:
+            if field is None:
+                # Give schemas a chance to materialize a virtual field that is
+                # not stored in self.models (e.g. relation-bound aggregates
+                # addressed via dot syntax). Default implementation returns
+                # None, which falls through to the "Unknown field" error.
+                field = self.resolve_unknown(
+                    model_cls, prev_relation, name_part
+                )
+            if field is None:
                 raise DjangoQLSchemaError(
-                    _(
-                        'Unknown field: {field}. Possible choices are: '
-                        '{choices}'
-                    ).format(
-                        field=name_part,
-                        choices=', '.join(sorted(self.models[model].keys())),
-                    ),
+                    self._unknown_field_message(model, model_cls, name_part),
                 )
             if field.type == 'relation':
+                prev_relation = field
                 model = field.relation
+                model_cls = field.related_model
                 field = None
+            else:
+                prev_relation = None
         return field
+
+    def resolve_unknown(self, model_cls, prev_relation, name_part):
+        """
+        Hook for resolving a name part that is not present in self.models.
+
+        Override to synthesize virtual fields on demand. ``model_cls`` is the
+        model the part was looked up on, ``prev_relation`` is the RelationField
+        just traversed to reach it (or None at the top level). Return a
+        DjangoQLField instance, or None to signal "unknown field".
+        """
+        return None
+
+    def unknown_field_hint(self, model_cls):
+        """
+        Hook returning an extra sentence appended to the "Unknown field" error,
+        e.g. to point users at hidden derived fields. Default: no hint.
+        """
+        return ''
+
+    def _unknown_field_message(self, model, model_cls, name_part):
+        # Only suggest fields that are actually offered in autocomplete; hidden
+        # derived fields (suggested=False) and synthesized aggregates are
+        # surfaced via unknown_field_hint() instead of bloating this list.
+        choices = ', '.join(
+            sorted(n for n, f in self.models[model].items() if f.suggested),
+        )
+        message = _(
+            'Unknown field: {field}. Possible choices are: {choices}'
+        ).format(field=name_part, choices=choices)
+        hint = self.unknown_field_hint(model_cls)
+        if hint:
+            # Period separates the choices list from the hint sentence so they
+            # don't run together ("...username. Relation aggregates...").
+            message = '%s. %s' % (message, hint)
+        return message
 
     def collect_annotations(self, node):
         """
