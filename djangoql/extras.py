@@ -11,7 +11,7 @@ from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import DjangoQLSchemaError
-from .schema import DateField, DjangoQLField, IntField
+from .schema import DateField, DjangoQLField, DjangoQLSchema, IntField
 
 
 class DatePartField(IntField):
@@ -218,6 +218,91 @@ class MaxField(NumericAggregateField):
     aggregate_name = 'max'
 
 
+class AggregateSchemaMixin:
+    """
+    Schema mixin: for every to-many relation (reverse FK + M2M, both
+    directions) of a model, add a ``<rel>__count`` field and
+    ``<rel>__<numfield>__{sum,avg,min,max}`` for each numeric field on the
+    related model (excluding primary keys and FK ids). Relations whose reverse
+    accessor is hidden (e.g. related_name='+') are skipped, since a correlated
+    subquery needs a usable reverse lookup.
+    """
+
+    NUMERIC_FIELDS = (
+        models.IntegerField,
+        models.FloatField,
+        models.DecimalField,
+    )
+    AGGREGATE_FIELDS = (
+        ('sum', SumField),
+        ('avg', AvgField),
+        ('min', MinField),
+        ('max', MaxField),
+    )
+
+    def get_fields(self, model):
+        fields = list(super().get_fields(model))
+        for f in model._meta.get_fields():
+            if not (f.is_relation and (f.one_to_many or f.many_to_many)):
+                continue
+            related = f.related_model
+            if related is None:
+                continue
+            owner = self._aggregate_owner_lookup(f)
+            if owner is None:  # hidden/unusable reverse -> skip
+                continue
+            rel = f.name
+            fields.append(
+                CountField(
+                    model=model,
+                    relation_name=rel,
+                    related_model=related,
+                    owner_lookup=owner,
+                    name='%s__count' % rel,
+                )
+            )
+            for nf in related._meta.get_fields():
+                if (
+                    isinstance(nf, self.NUMERIC_FIELDS)
+                    and not nf.is_relation
+                    and not getattr(nf, 'primary_key', False)
+                ):
+                    for agg_name, agg_cls in self.AGGREGATE_FIELDS:
+                        fields.append(
+                            agg_cls(
+                                model=model,
+                                relation_name=rel,
+                                related_model=related,
+                                owner_lookup=owner,
+                                source_field=nf.name,
+                                name='{}__{}__{}'.format(
+                                    rel, nf.name, agg_name
+                                ),
+                            )
+                        )
+        return fields
+
+    @staticmethod
+    def _aggregate_owner_lookup(f):
+        """
+        Return the reverse lookup to filter the related model by the owning
+        instance (for building a correlated subquery), or None if the
+        relation's reverse accessor is hidden/unusable.
+
+        A forward M2M with ``related_name='+'`` sets ``f.remote_field.hidden``
+        to True and generates an internal accessor name that cannot be used as
+        a real Django lookup. We detect this case and return None so that the
+        caller skips the relation entirely.
+        """
+        if (
+            hasattr(f, 'remote_field')
+            and f.remote_field is not None
+            and getattr(f.remote_field, 'hidden', False)
+        ):
+            return None
+        return _owner_lookup(f)
+
+
 class DatePartsSchemaMixin:
     """
     Schema mixin: expands every Date/DateTime/Time model field into virtual
@@ -262,3 +347,7 @@ class DatePartsSchemaMixin:
                     for p in self.TIME_PARTS
                 ]
         return fields
+
+
+class ExtrasSchema(DatePartsSchemaMixin, AggregateSchemaMixin, DjangoQLSchema):
+    """Opt-in schema with date/time parts and relation aggregates enabled."""

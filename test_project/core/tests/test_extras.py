@@ -323,3 +323,81 @@ class AggregatesTest(TestCase):
         result = self._usernames('book__rating__avg = None')
         self.assertIn('no_books', result)
         self.assertNotIn('u', result)
+
+
+class AutoAggregateTest(TestCase):
+    def setUp(self):
+        self.u = User.objects.create(username='u')
+        Book.objects.create(name='a', author=self.u, rating=2.0, price=5)
+        Book.objects.create(name='b', author=self.u, rating=4.0, price=7)
+        self.v = User.objects.create(username='v')
+
+    def _usernames(self, search):
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(User.objects.all(), search, schema=ExtrasSchema)
+        return set(qs.values_list('username', flat=True))
+
+    def test_auto_count(self):
+        self.assertEqual(self._usernames('book__count = 2'), {'u'})
+
+    def test_auto_numeric_aggregate(self):
+        self.assertEqual(self._usernames('book__price__sum >= 12'), {'u'})
+
+    def test_pk_and_fk_excluded(self):
+        from djangoql.extras import ExtrasSchema
+
+        names = set(ExtrasSchema(User).models['auth.user'].keys())
+        self.assertIn('book__count', names)
+        self.assertNotIn('book__id__sum', names)
+        self.assertNotIn('book__author__sum', names)
+
+    def test_multiple_aggregates_are_independent(self):
+        # Two to-many aggregates in one query must not multiply each other.
+        self.u.groups.clear()
+        result = self._usernames('book__count = 2 and groups__count = 0')
+        self.assertEqual(result, {'u'})
+
+    def test_nested_one_hop(self):
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(
+            Book.objects.all(),
+            'author.book__count > 1',
+            schema=ExtrasSchema,
+        )
+        names = set(qs.values_list('name', flat=True))
+        self.assertEqual(names, {'a', 'b'})
+
+    def test_date_and_count_compose(self):
+        from djangoql.extras import ExtrasSchema
+
+        user_fields = set(ExtrasSchema(User).models['auth.user'].keys())
+        self.assertIn('date_joined__year', user_fields)
+        self.assertIn('book__count', user_fields)
+
+    def test_introspect_book_with_hidden_m2m(self):
+        # Book.similar_books has related_name='+' (hidden reverse).
+        # Introspecting Book with ExtrasSchema must not crash, and a plain
+        # query must work.
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(Book.objects.all(), 'name = "a"', schema=ExtrasSchema)
+        self.assertEqual(set(qs.values_list('name', flat=True)), {'a'})
+        book_fields = set(ExtrasSchema(Book).models['core.book'].keys())
+        self.assertNotIn('similar_books__count', book_fields)
+
+    def test_reverse_m2m_count(self):
+        # Group has a reverse M2M to User (User.groups). Searching Group,
+        # user__count must count members (exercises _owner_lookup for
+        # reverse M2M).
+        from djangoql.extras import ExtrasSchema
+
+        g = Group.objects.create(name='g')
+        self.u.groups.add(g)
+        qs = apply_search(
+            Group.objects.all(),
+            'user__count > 0',
+            schema=ExtrasSchema,
+        )
+        self.assertEqual(set(qs.values_list('name', flat=True)), {'g'})
