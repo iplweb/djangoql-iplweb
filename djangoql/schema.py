@@ -151,6 +151,17 @@ class DjangoQLField:
         q = models.Q(**{f'{search}{op}': self.get_lookup_value(value)})
         return ~q if invert else q
 
+    def get_annotations(self, path):
+        """
+        Return a dict of {alias: expression} to be applied to the queryset via
+        .annotate() before filtering. Default: no annotations.
+
+        Only called for fields actually referenced in a query, so aggregate
+        fields produce SQL lazily. `path` is the list of names preceding this
+        field (relation hops), e.g. ['author'] for 'author.book__count'.
+        """
+        return {}
+
     def validate(self, value):
         if not self.nullable and value is None:
             raise DjangoQLSchemaError(
@@ -495,6 +506,21 @@ class DjangoQLSchema:
                 model = field.relation
                 field = None
         return field
+
+    def collect_annotations(self, node):
+        """
+        Walk a validated AST and merge get_annotations() from every field that
+        is actually referenced. Returns {alias: expression}.
+        """
+        annotations = {}
+        if isinstance(node.operator, Logical):
+            annotations.update(self.collect_annotations(node.left))
+            annotations.update(self.collect_annotations(node.right))
+            return annotations
+        field = self.resolve_name(node.left)
+        if field is not None:
+            annotations.update(field.get_annotations(node.left.parts[:-1]))
+        return annotations
 
     def validate(self, node):
         """
