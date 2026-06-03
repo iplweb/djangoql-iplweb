@@ -17,3 +17,15 @@ uv.lock
 .coverage
 htmlcov/
 *.egg-info/
+
+# Secrets / credentials (never commit)
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
