@@ -277,9 +277,15 @@ badges and the package-name note).
 - Deep (2+ hop) aggregate paths as a guaranteed, tested feature.
 - Docs site deployment (GitHub Pages / ReadTheDocs).
 
+## Implementation Sequencing
+
+Implementation is split into **two separate plans**, executed in order:
+
+1. **Feature code** — date/time part fields, subquery-based aggregates, the `suggested`
+   flag, core changes, and tests.
+2. **Documentation** — MkDocs site under `docs/`, migrating and reorganizing the README.
+
 ## Open Questions
 
 - Exact MkDocs exclusion mechanism for `docs/superpowers/` (plugin vs. layout) —
-  resolved during implementation.
-- Whether to split implementation into two plans (feature code; docs migration) or one
-  phased plan — to be decided when writing the plan.
+  resolved during the documentation plan.
