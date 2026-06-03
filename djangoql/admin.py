@@ -7,9 +7,9 @@ from django.db import DataError, NotSupportedError
 from django.forms import Media
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.urls import re_path, reverse
 from django.views.generic import TemplateView
 
-from .compat import text_type
 from .exceptions import DjangoQLError
 from .queryset import apply_search
 from .schema import DjangoQLSchema
@@ -17,25 +17,12 @@ from .serializers import SuggestionsAPISerializer
 from .views import SuggestionsAPIView
 
 
-try:
-    from django.core.urlresolvers import reverse
-except ImportError:  # Django 2.0
-    from django.urls import reverse
-
-try:
-    from django.urls import re_path  # Django >= 4.0
-except ImportError:
-    try:
-        from django.conf.urls import re_path  # Django < 4.0
-    except ImportError:  # Django < 2.0
-        from django.conf.urls import url as re_path
-
 DJANGOQL_SEARCH_MARKER = 'q-l'
 
 
 class DjangoQLChangeList(ChangeList):
     def get_filters_params(self, *args, **kwargs):
-        params = super(DjangoQLChangeList, self).get_filters_params(
+        params = super().get_filters_params(
             *args,
             **kwargs
         )
@@ -44,7 +31,7 @@ class DjangoQLChangeList(ChangeList):
         return params
 
 
-class DjangoQLSearchMixin(object):
+class DjangoQLSearchMixin:
     search_fields = ('_djangoql',)  # just a stub to have search input displayed
     djangoql_completion = True
     djangoql_completion_enabled_by_default = True
@@ -68,7 +55,7 @@ class DjangoQLSearchMixin(object):
             self.search_mode_toggle_enabled() and
             not self.djangoql_search_enabled(request)
         ):
-            return super(DjangoQLSearchMixin, self).get_search_results(
+            return super().get_search_results(
                 request=request,
                 queryset=queryset,
                 search_term=search_term,
@@ -109,7 +96,7 @@ class DjangoQLSearchMixin(object):
         if isinstance(exception, ValidationError):
             msg = exception.messages[0]
         else:
-            msg = text_type(exception)
+            msg = str(exception)
         return render_to_string('djangoql/error_message.html', context={
             'error_message': msg,
             'djangoql_syntax_help_url': reverse(
@@ -119,7 +106,7 @@ class DjangoQLSearchMixin(object):
 
     @property
     def media(self):
-        media = super(DjangoQLSearchMixin, self).media
+        media = super().media
         if self.djangoql_completion:
             js = [
                 'djangoql/js/completion.js',
@@ -166,7 +153,7 @@ class DjangoQLSearchMixin(object):
                     name='djangoql_syntax_help',
                 ),
             ]
-        return custom_urls + super(DjangoQLSearchMixin, self).get_urls()
+        return custom_urls + super().get_urls()
 
     def introspect(self, request):
         suggestions_url = reverse('%s:%s_%s_djangoql_suggestions' % (

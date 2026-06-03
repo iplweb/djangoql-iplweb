@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import re
 from decimal import Decimal
 
@@ -8,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 import ply.yacc as yacc
 
 from .ast import Comparison, Const, Expression, List, Logical, Name
-from .compat import binary_type, text_type
 from .exceptions import DjangoQLParserError
 from .lexer import DjangoQLLexer
 
@@ -28,12 +25,12 @@ def unescape_repl(m):
 
 
 def unescape(value):
-    if isinstance(value, binary_type):
+    if isinstance(value, bytes):
         value = value.decode('utf8')
     return re.sub(unescape_pattern, unescape_repl, value)
 
 
-class DjangoQLParser(object):
+class DjangoQLParser:
     def __init__(self, debug=False, **kwargs):
         self.default_lexer = DjangoQLLexer()
         self.tokens = self.default_lexer.tokens
@@ -212,7 +209,7 @@ class DjangoQLParser(object):
         if token is None:
             self.raise_syntax_error(_('Unexpected end of input'))
         else:
-            fragment = text_type(token.value)
+            fragment = str(token.value)
             if len(fragment) > 20:
                 fragment = fragment[:17] + '...'
             self.raise_syntax_error(

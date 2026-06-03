@@ -71,12 +71,12 @@ class DjangoQLParseTest(TestCase):
     def test_escaped_chars(self):
         self.assertEqual(
             Expression(Name('name'), Comparison('~'),
-                       Const(u'Contains a "quoted" str, 年年有余')),
-            self.parser.parse(u'name ~ "Contains a \\"quoted\\" str, 年年有余"'),
+                       Const('Contains a "quoted" str, 年年有余')),
+            self.parser.parse('name ~ "Contains a \\"quoted\\" str, 年年有余"'),
         )
         self.assertEqual(
-            Expression(Name('options'), Comparison('='), Const(u'П и Щ')),
-            self.parser.parse(u'options = "\\u041f \\u0438 \\u0429"'),
+            Expression(Name('options'), Comparison('='), Const('П и Щ')),
+            self.parser.parse('options = "\\u041f \\u0438 \\u0429"'),
         )
 
     def test_single_quoted_strings(self):
@@ -96,12 +96,12 @@ class DjangoQLParseTest(TestCase):
     def test_escaped_chars_single_quotes(self):
         self.assertEqual(
             Expression(Name('name'), Comparison('~'),
-                       Const(u"It's working")),
-            self.parser.parse(u"name ~ 'It\\'s working'"),
+                       Const("It's working")),
+            self.parser.parse("name ~ 'It\\'s working'"),
         )
         self.assertEqual(
-            Expression(Name('options'), Comparison('='), Const(u'П и Щ')),
-            self.parser.parse(u"options = '\\u041f \\u0438 \\u0429'"),
+            Expression(Name('options'), Comparison('='), Const('П и Щ')),
+            self.parser.parse("options = '\\u041f \\u0438 \\u0429'"),
         )
 
     def test_numbers(self):
