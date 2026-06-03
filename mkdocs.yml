@@ -30,6 +30,7 @@ nav:
   - Language reference: language.md
   - Schema & custom fields: schema.md
   - Derived fields: derived-fields.md
+  - Empty-result breakdown: empty-result-breakdown.md
   - Outside the admin: queryset.md
   - Completion widget: completion-widget.md
   - Internationalization: i18n.md

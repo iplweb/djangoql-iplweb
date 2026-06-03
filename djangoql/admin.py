@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.urls import re_path, reverse
 from django.views.generic import TemplateView
 
+from .breakdown import explain_empty
 from .exceptions import DjangoQLError
 from .queryset import apply_search
 from .schema import DjangoQLSchema
@@ -37,6 +38,13 @@ class DjangoQLSearchMixin:
     djangoql_completion_enabled_by_default = True
     djangoql_schema = DjangoQLSchema
     djangoql_syntax_help_template = 'djangoql/syntax_help.html'
+    # When a valid DjangoQL search returns zero rows, explain *where* in the
+    # query the data runs out and surface it as a warning. Set to False to
+    # disable the extra (lazy, count()-per-node) queries.
+    djangoql_explain_empty = True
+    # Cost guard for the empty-result breakdown: max AST nodes counted before
+    # the breakdown is truncated to the top-level conjuncts.
+    djangoql_explain_empty_max_nodes = 50
 
     def search_mode_toggle_enabled(self):
         # If search fields were defined on a child ModelAdmin instance,
@@ -89,8 +97,49 @@ class DjangoQLSearchMixin:
                 msg = self.djangoql_error_message(e)
                 messages.add_message(request, messages.WARNING, msg)
                 qs = queryset.none()
+            else:
+                self.djangoql_add_empty_breakdown(
+                    request,
+                    queryset,
+                    qs,
+                    search_term,
+                )
 
         return qs, use_distinct
+
+    def djangoql_add_empty_breakdown(self, request, queryset, qs, search_term):
+        """If a valid DjangoQL search returned zero rows, compute and surface
+        a breakdown of *where* the query runs out of data as a warning.
+
+        Lazy: this is only attempted when ``djangoql_explain_empty`` is on and
+        the result set is empty, so the extra count() queries never run on a
+        non-empty search.
+        """
+        if not self.djangoql_explain_empty:
+            return
+        exists = getattr(qs, 'exists', None)
+        # Only real querysets support a cheap emptiness check; anything else
+        # (e.g. a test double) is left untouched.
+        if not callable(exists) or exists():
+            return
+        try:
+            breakdown = explain_empty(
+                queryset,
+                search_term,
+                self.djangoql_schema,
+                max_nodes=self.djangoql_explain_empty_max_nodes,
+            )
+        except (DjangoQLError, ValueError, FieldError, ValidationError):
+            # Never let the breakdown break the changelist; it's a best-effort
+            # diagnostic on top of an already-empty result.
+            return
+        if breakdown is None:
+            return
+        msg = render_to_string(
+            'djangoql/empty_breakdown.html',
+            context={'node': breakdown},
+        )
+        messages.add_message(request, messages.WARNING, msg)
 
     def djangoql_error_message(self, exception):
         if isinstance(exception, ValidationError):
