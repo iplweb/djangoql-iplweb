@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from .compat import text_type
 
 
