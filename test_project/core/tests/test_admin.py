@@ -1,8 +1,31 @@
 import json
+from unittest import mock
 
+from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.contrib.messages import WARNING
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core.exceptions import ValidationError
+from django.db import DataError, NotSupportedError
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
+
+from core.admin import CustomUserAdmin
+
+from ..models import Book
+
+
+class FakeQuerySet(list):
+    """Minimal stand-in for a QuerySet so we can drive the Postgres-specific
+    'inet' error handling in get_search_results without a real Postgres DB."""
+
+    def __init__(self, items=(), explain_exc=None):
+        super().__init__(items)
+        self.explain_exc = explain_exc
+
+    def explain(self):
+        if self.explain_exc is not None:
+            raise self.explain_exc
 
 
 class DjangoQLAdminTest(TestCase):
@@ -74,19 +97,25 @@ class DjangoQLAdminTest(TestCase):
 
         # field with choices
         r = self.get_json(url, data={'field': 'genre'})
-        self.assertEqual(r, {
-            'page': 1,
-            'has_next': False,
-            'items': ['Drama', 'Comics', 'Other'],
-        })
+        self.assertEqual(
+            r,
+            {
+                'page': 1,
+                'has_next': False,
+                'items': ['Drama', 'Comics', 'Other'],
+            },
+        )
 
         # test that search is working
         r = self.get_json(url, data={'field': 'genre', 'search': 'o'})
-        self.assertEqual(r, {
-            'page': 1,
-            'has_next': False,
-            'items': ['Comics', 'Other'],
-        })
+        self.assertEqual(
+            r,
+            {
+                'page': 1,
+                'has_next': False,
+                'items': ['Comics', 'Other'],
+            },
+        )
 
         # ensure that page parameter is checked correctly
         r = self.get_json(url, status=400, data={'field': 'genre', 'page': 'x'})
@@ -102,11 +131,14 @@ class DjangoQLAdminTest(TestCase):
 
         # check that paging after results end works correctly
         r = self.get_json(url, data={'field': 'genre', 'page': 2})
-        self.assertEqual(r, {
-            'page': 2,
-            'has_next': False,
-            'items': [],
-        })
+        self.assertEqual(
+            r,
+            {
+                'page': 2,
+                'has_next': False,
+                'items': [],
+            },
+        )
 
     def test_query(self):
         url = reverse('admin:core_book_changelist') + '?q=price=0'
@@ -114,3 +146,196 @@ class DjangoQLAdminTest(TestCase):
         response = self.client.get(url)
         # There should be no error at least
         self.assertEqual(200, response.status_code)
+
+    def test_changelist_strips_search_marker(self):
+        # DjangoQLChangeList.get_filters_params must drop the q-l marker so it
+        # isn't treated as a model field filter (which would 500).
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_changelist') + '?q-l=on&q=name="x"'
+        response = self.client.get(url)
+        self.assertEqual(200, response.status_code)
+
+    def test_suggestions_unsupported_field(self):
+        # A field without suggest_options should produce a clear 400 error
+        # instead of an empty/crashing response.
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_suggestions')
+        r = self.get_json(url, status=400, data={'field': 'name'})
+        self.assertEqual(
+            r.get('error'),
+            "Book.name doesn't support suggestions",
+        )
+
+
+class DjangoQLSearchFlowTest(TestCase):
+    """Exercise DjangoQLSearchMixin.get_search_results and friends directly.
+
+    The endpoint tests above only cover the JSON introspection/suggestions
+    views; the actual search path (toggle handling, error -> warning, media)
+    needs the admin methods invoked against a request.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            username='boss',
+            email='boss@derp.rr',
+            password='lol',
+        )
+        Book.objects.create(name='alpha', author=cls.user)
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        # The mixin is applied to the registered ModelAdmin instances.
+        self.book_admin = django_admin.site._registry[Book]
+        self.user_admin = django_admin.site._registry[User]
+
+    def _request(self, path='/'):
+        request = self.factory.get(path)
+        request.user = self.user
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        return request
+
+    def test_search_mode_toggle_enabled(self):
+        # BookAdmin keeps the stub search_fields -> single (DjangoQL) mode.
+        self.assertFalse(self.book_admin.search_mode_toggle_enabled())
+        # CustomUserAdmin defines its own search_fields -> toggle offered.
+        self.assertTrue(self.user_admin.search_mode_toggle_enabled())
+
+    def test_djangoql_search_enabled(self):
+        self.assertTrue(
+            self.user_admin.djangoql_search_enabled(self._request('/?q-l=on')),
+        )
+        self.assertFalse(
+            self.user_admin.djangoql_search_enabled(self._request('/?q-l=off')),
+        )
+        self.assertFalse(
+            self.user_admin.djangoql_search_enabled(self._request('/')),
+        )
+
+    def test_empty_search_returns_queryset_unchanged(self):
+        qs = Book.objects.all()
+        result, use_distinct = self.book_admin.get_search_results(
+            self._request(),
+            qs,
+            '',
+        )
+        self.assertFalse(use_distinct)
+        self.assertEqual(list(result), list(qs))
+
+    def test_toggle_falls_back_to_default_search(self):
+        # Toggle enabled + no q-l marker -> plain Django search_fields lookup.
+        request = self._request('/')
+        result, _ = self.user_admin.get_search_results(
+            request,
+            User.objects.all(),
+            'boss',
+        )
+        self.assertIn(self.user, result)
+
+    def test_valid_djangoql_search(self):
+        request = self._request()
+        result, _ = self.book_admin.get_search_results(
+            request,
+            Book.objects.all(),
+            'name = "alpha"',
+        )
+        self.assertEqual([b.name for b in result], ['alpha'])
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_invalid_djangoql_search_adds_warning(self):
+        request = self._request()
+        result, _ = self.book_admin.get_search_results(
+            request,
+            Book.objects.all(),
+            'no_such_field = 1',
+        )
+        # Bad queries yield an empty result set, not a 500.
+        self.assertEqual(list(result), [])
+        queued = request._messages._queued_messages
+        self.assertEqual(len(queued), 1)
+        self.assertEqual(queued[0].level, WARNING)
+
+    def test_error_message_from_validation_error(self):
+        # ValidationError carries .messages; the mixin must use the first one.
+        html = self.book_admin.djangoql_error_message(ValidationError('boom'))
+        self.assertIn('boom', html)
+
+    def test_explain_not_supported_falls_back_to_slice(self):
+        # If .explain() isn't supported by the backend, the mixin probes the
+        # queryset with a 1-row slice instead and returns it unchanged.
+        fake = FakeQuerySet(['x'], explain_exc=NotSupportedError())
+        request = self._request()
+        with mock.patch(
+            'djangoql.admin.apply_search',
+            return_value=fake,
+        ):
+            result, _ = self.book_admin.get_search_results(
+                request,
+                Book.objects.all(),
+                'name = "alpha"',
+            )
+        self.assertIs(result, fake)
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_search_without_explain_method(self):
+        # A queryset lacking a callable .explain() is probed with a slice.
+        fake = ['only-item']  # plain list: no .explain attribute
+        request = self._request()
+        with mock.patch(
+            'djangoql.admin.apply_search',
+            return_value=fake,
+        ):
+            result, _ = self.book_admin.get_search_results(
+                request,
+                Book.objects.all(),
+                'name = "alpha"',
+            )
+        self.assertIs(result, fake)
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_inet_data_error_is_swallowed_as_warning(self):
+        fake = FakeQuerySet(explain_exc=DataError('bad inet value'))
+        request = self._request()
+        with mock.patch(
+            'djangoql.admin.apply_search',
+            return_value=fake,
+        ):
+            result, _ = self.book_admin.get_search_results(
+                request,
+                Book.objects.all(),
+                'name = "alpha"',
+            )
+        # 'inet' errors become a user warning + empty result set.
+        self.assertEqual(list(result), [])
+        queued = request._messages._queued_messages
+        self.assertEqual(len(queued), 1)
+        self.assertEqual(queued[0].level, WARNING)
+
+    def test_non_inet_data_error_propagates(self):
+        fake = FakeQuerySet(explain_exc=DataError('some other failure'))
+        request = self._request()
+        with mock.patch(
+            'djangoql.admin.apply_search',
+            return_value=fake,
+        ):
+            with self.assertRaises(DataError):
+                self.book_admin.get_search_results(
+                    request,
+                    Book.objects.all(),
+                    'name = "alpha"',
+                )
+
+    def test_media_includes_toggle_scripts(self):
+        rendered = str(self.user_admin.media)
+        self.assertIn('djangoql/js/completion_admin_toggle.js', rendered)
+
+        # When completion is on but not by default, an extra script is added.
+        admin_obj = CustomUserAdmin(User, django_admin.site)
+        admin_obj.djangoql_completion_enabled_by_default = False
+        rendered_off = str(admin_obj.media)
+        self.assertIn(
+            'djangoql/js/completion_admin_toggle_off.js',
+            rendered_off,
+        )

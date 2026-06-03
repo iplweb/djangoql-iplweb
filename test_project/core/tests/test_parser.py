@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 import unittest.util
 from unittest import TestCase
 
 from djangoql.ast import Comparison, Const, Expression, List, Logical, Name
 from djangoql.exceptions import DjangoQLParserError
-from djangoql.parser import DjangoQLParser
+from djangoql.parser import DjangoQLParser, unescape
 
 
 # Show full contents in assertions when comparing long text strings
@@ -28,8 +27,11 @@ class DjangoQLParseTest(TestCase):
             self.parser.parse('name != "Gennady"'),
         )
         self.assertEqual(
-            Expression(Name('married'), Comparison('in'),
-                       List([Const(True), Const(False)])),
+            Expression(
+                Name('married'),
+                Comparison('in'),
+                List([Const(True), Const(False)]),
+            ),
             self.parser.parse('married in (True, False)'),
         )
         self.assertEqual(
@@ -37,8 +39,9 @@ class DjangoQLParseTest(TestCase):
             self.parser.parse('(smile != None)'),
         )
         self.assertEqual(
-            Expression(Name(['job', 'best', 'title']), Comparison('>'),
-                       Const('none')),
+            Expression(
+                Name(['job', 'best', 'title']), Comparison('>'), Const('none')
+            ),
             self.parser.parse('job.best.title > "none"'),
         )
 
@@ -70,8 +73,11 @@ class DjangoQLParseTest(TestCase):
 
     def test_escaped_chars(self):
         self.assertEqual(
-            Expression(Name('name'), Comparison('~'),
-                       Const('Contains a "quoted" str, 年年有余')),
+            Expression(
+                Name('name'),
+                Comparison('~'),
+                Const('Contains a "quoted" str, 年年有余'),
+            ),
             self.parser.parse('name ~ "Contains a \\"quoted\\" str, 年年有余"'),
         )
         self.assertEqual(
@@ -95,8 +101,7 @@ class DjangoQLParseTest(TestCase):
 
     def test_escaped_chars_single_quotes(self):
         self.assertEqual(
-            Expression(Name('name'), Comparison('~'),
-                       Const("It's working")),
+            Expression(Name('name'), Comparison('~'), Const("It's working")),
             self.parser.parse("name ~ 'It\\'s working'"),
         )
         self.assertEqual(
@@ -137,8 +142,10 @@ class DjangoQLParseTest(TestCase):
                     Expression(Name('age'), Comparison('<='), Const(45)),
                 ),
             ),
-            self.parser.parse('(city = "Ivanovo" and age <= 35) or '
-                              '(city = "Paris" and age <= 45)'),
+            self.parser.parse(
+                '(city = "Ivanovo" and age <= 35) or '
+                '(city = "Paris" and age <= 45)'
+            ),
         )
 
     def test_invalid_comparison(self):
@@ -157,7 +164,23 @@ class DjangoQLParseTest(TestCase):
 
     def test_entity_props(self):
         self.assertEqual(
-            Expression(Name(['user', 'group', 'id']), Comparison('='),
-                       Const(5)),
+            Expression(
+                Name(['user', 'group', 'id']), Comparison('='), Const(5)
+            ),
             self.parser.parse('user.group.id = 5'),
         )
+
+    def test_unescape_decodes_bytes(self):
+        # unescape() defensively decodes bytes input before unescaping.
+        self.assertEqual(unescape(rb'a\"b'), 'a"b')
+        self.assertEqual(unescape(r'a\"b'), 'a"b')
+
+    def test_long_error_token_is_truncated(self):
+        # A syntax error on a token longer than 20 chars is truncated to
+        # 17 chars + ellipsis, and reported as "Line N" (no column).
+        with self.assertRaises(DjangoQLParserError) as ctx:
+            self.parser.parse('"%s"' % ('x' * 30))
+        message = str(ctx.exception)
+        self.assertIn('xxxxxxxxxxxxxxxxx...', message)
+        self.assertIn('Line 1', message)
+        self.assertNotIn('col', message)

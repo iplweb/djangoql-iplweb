@@ -23,7 +23,8 @@ class BookCustomSearchSchema(DjangoQLSchema):
     def get_fields(self, model):
         if model == Book:
             return [
-                'genre', WrittenInYearField(),
+                'genre',
+                WrittenInYearField(),
             ]
 
 
@@ -105,6 +106,28 @@ class DjangoQLQuerySetTest(TestCase):
         where_clause = str(qs.query).split('WHERE')[1].strip()
         self.assertTrue(
             where_clause.startswith('"core_book"."written" BETWEEN 2017-01-01'),
+        )
+
+    def test_or_query(self):
+        # Exercises the OR branch of build_filter (the rest of the suite only
+        # builds AND expressions).
+        qs = apply_search(
+            User.objects.all(),
+            'username = "a" or username = "b"',
+        )
+        where_clause = str(qs.query).split('WHERE')[1].strip()
+        self.assertEqual(
+            '("auth_user"."username" = a OR "auth_user"."username" = b)',
+            where_clause,
+        )
+
+    def test_not_in_query(self):
+        # 'not in' is the two-token comparison operator form.
+        qs = apply_search(User.objects.all(), 'username not in ("a", "b")')
+        where_clause = str(qs.query).split('WHERE')[1].strip()
+        self.assertEqual(
+            'NOT ("auth_user"."username" IN (a, b))',
+            where_clause,
         )
 
     def test_empty_datetime(self):
