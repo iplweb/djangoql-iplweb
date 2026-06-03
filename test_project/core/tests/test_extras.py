@@ -1,7 +1,7 @@
 # Tests for the core `suggested` flag and djangoql.extras derived fields.
 from datetime import datetime
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.db.models import Count
 from django.test import TestCase
 
@@ -217,3 +217,41 @@ class CountFKTest(TestCase):
                 'book__count = None',
                 schema=_CountSchemaFK,
             )
+
+
+class _CountSchemaM2M(DjangoQLSchema):
+    def get_fields(self, model):
+        from djangoql.extras import CountField, _owner_lookup
+
+        fields = list(super().get_fields(model))
+        if model == User:
+            rel = User._meta.get_field('groups')  # ManyToManyField (forward)
+            fields.append(
+                CountField(
+                    model=User,
+                    relation_name='groups',
+                    related_model=rel.related_model,
+                    owner_lookup=_owner_lookup(rel),
+                    name='groups__count',
+                )
+            )
+        return fields
+
+
+class CountM2MTest(TestCase):
+    def setUp(self):
+        self.g1 = Group.objects.create(name='g1')
+        self.g2 = Group.objects.create(name='g2')
+        self.member = User.objects.create(username='member')
+        self.member.groups.add(self.g1, self.g2)
+        self.loner = User.objects.create(username='loner')
+
+    def _usernames(self, search):
+        qs = apply_search(User.objects.all(), search, schema=_CountSchemaM2M)
+        return set(qs.values_list('username', flat=True))
+
+    def test_m2m_count_gt(self):
+        self.assertEqual(self._usernames('groups__count > 1'), {'member'})
+
+    def test_m2m_count_zero(self):
+        self.assertIn('loner', self._usernames('groups__count = 0'))
