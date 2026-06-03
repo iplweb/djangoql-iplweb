@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 
 from django.db import models
-from django.db.models import Count, OuterRef, Q, Subquery
+from django.db.models import Avg, Count, Max, Min, OuterRef, Q, Subquery, Sum
+from django.db.models import FloatField as ORMFloatField
 from django.db.models import IntegerField as ORMIntegerField
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.fields.related import ForeignObjectRel
@@ -175,6 +177,41 @@ class CountField(AggregateField):
     def build_expression(self, path):
         # Coalesce to 0 so "<rel>__count = 0" matches rows with no relations.
         return Coalesce(self._subquery(path), 0)
+
+
+class NumericAggregateField(AggregateField):
+    """Sum/Avg/Min/Max over a numeric field of the related model.
+
+    Unlike CountField, these return SQL NULL for an empty related set, so they
+    are nullable and accept numeric comparison values.
+    """
+
+    nullable = True
+    value_types = [int, float, Decimal]
+    value_types_description = _('numbers')
+
+    def output_field(self):
+        return ORMFloatField()
+
+
+class SumField(NumericAggregateField):
+    aggregate = Sum
+    aggregate_name = 'sum'
+
+
+class AvgField(NumericAggregateField):
+    aggregate = Avg
+    aggregate_name = 'avg'
+
+
+class MinField(NumericAggregateField):
+    aggregate = Min
+    aggregate_name = 'min'
+
+
+class MaxField(NumericAggregateField):
+    aggregate = Max
+    aggregate_name = 'max'
 
 
 class DatePartsSchemaMixin:

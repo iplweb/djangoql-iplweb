@@ -255,3 +255,57 @@ class CountM2MTest(TestCase):
 
     def test_m2m_count_zero(self):
         self.assertIn('loner', self._usernames('groups__count = 0'))
+
+
+class _AggSchema(DjangoQLSchema):
+    def get_fields(self, model):
+        from djangoql.extras import (
+            AvgField,
+            MaxField,
+            MinField,
+            SumField,
+            _owner_lookup,
+        )
+
+        fields = list(super().get_fields(model))
+        if model == User:
+            rel = User._meta.get_field('book')
+            common = dict(
+                model=User,
+                relation_name='book',
+                related_model=rel.related_model,
+                owner_lookup=_owner_lookup(rel),
+                source_field='rating',
+            )
+            fields += [
+                SumField(name='book__rating__sum', **common),
+                AvgField(name='book__rating__avg', **common),
+                MinField(name='book__rating__min', **common),
+                MaxField(name='book__rating__max', **common),
+            ]
+        return fields
+
+
+class AggregatesTest(TestCase):
+    def setUp(self):
+        self.u = User.objects.create(username='u')
+        Book.objects.create(name='a', author=self.u, rating=2.0)
+        Book.objects.create(name='b', author=self.u, rating=4.0)
+        self.v = User.objects.create(username='v')
+        Book.objects.create(name='c', author=self.v, rating=10.0)
+
+    def _usernames(self, search):
+        qs = apply_search(User.objects.all(), search, schema=_AggSchema)
+        return set(qs.values_list('username', flat=True))
+
+    def test_avg(self):
+        # u avg = 3.0, v avg = 10.0
+        self.assertEqual(self._usernames('book__rating__avg > 5'), {'v'})
+
+    def test_sum(self):
+        # u sum = 6.0, v sum = 10.0
+        self.assertEqual(self._usernames('book__rating__sum < 8'), {'u'})
+
+    def test_min_max(self):
+        self.assertEqual(self._usernames('book__rating__min >= 10'), {'v'})
+        self.assertEqual(self._usernames('book__rating__max <= 4'), {'u'})
