@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/djangoql-iplweb)](https://pypi.org/project/djangoql-iplweb/)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/iplweb/djangoql-iplweb)
 [![Django Version](https://img.shields.io/badge/django-5.2%20%7C%206.0-blue)](https://github.com/iplweb/djangoql-iplweb)
-[![License](https://img.shields.io/github/license/iplweb/djangoql-iplweb)](LICENSE)
+[![License](https://img.shields.io/github/license/iplweb/djangoql-iplweb)](https://github.com/iplweb/djangoql-iplweb/blob/master/LICENSE)
 
 Advanced search language for Django, with auto-completion. Supports logical operators, parenthesis, table joins, and works with any Django model. Tested on Python 3.10–3.14, Django 5.2 and 6.0. The auto-completion feature has been tested in Chrome, Firefox, Safari, IE9+.
 
@@ -38,45 +38,14 @@ See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 - Internationalized error messages with translation catalogs for 11 locales
 - Usable outside the Django admin, including a standalone JavaScript completion widget
 
-## Installation
+## Supported versions
 
-Using [uv](https://docs.astral.sh/uv/) (recommended):
+DjangoQL is tested against the following Django × Python combinations:
 
-``` shell
-$ uv add djangoql-iplweb
-```
-
-Using pip:
-
-``` shell
-$ pip install djangoql-iplweb
-```
-
-Add `'djangoql'` to `INSTALLED_APPS` in your `settings.py`:
-
-``` python
-INSTALLED_APPS = [
-    ...
-    'djangoql',
-    ...
-]
-```
-
-For full setup instructions and usage examples, see the [Documentation](#documentation) below.
-
-## Documentation
-
-Full documentation lives in the [`docs/`](docs/) directory (built with MkDocs).
-Key pages:
-
-- [Installation](docs/installation.md) — complete setup guide
-- [Django admin integration](docs/admin.md) — `DjangoQLSearchMixin` and admin search modes
-- [Language reference](docs/language.md) — query syntax, operators, and examples
-- [Schema & custom fields](docs/schema.md) — restrict searchable models/fields, custom search fields
-- [Derived fields](docs/derived-fields.md) — search by annotations and computed values
-- [Outside the admin](docs/queryset.md) — `DjangoQLQuerySet` and `apply_search()`
-- [Completion widget](docs/completion-widget.md) — standalone JS widget outside the admin
-- [Internationalization](docs/i18n.md) — i18n support and supplied locales
+| Django  | 3.10 | 3.11 | 3.12 | 3.13 | 3.14 |
+|---------|:----:|:----:|:----:|:----:|:----:|
+| 5.2 LTS |  ✓   |  ✓   |  ✓   |  ✓   |  ✓   |
+| 6.0     |  —   |  —   |  ✓   |  ✓   |  ✓   |
 
 ## Supported by
 
@@ -87,3 +56,5 @@ This fork is graciously supported and maintained by **[iplweb](https://www.iplwe
 ## License
 
 MIT
+
+See [Installation](installation.md) to get started.
