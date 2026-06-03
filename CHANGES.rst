@@ -1,10 +1,17 @@
-Unreleased
-----------
+0.20.0
+------
 
+* **Breaking:** dropped support for Python older than 3.10 and Django older
+  than 5.2. This release targets Python 3.10–3.14 and Django 5.2 LTS / 6.0.
+  Projects running older Python or Django should stay on the 0.19.x series.
 * Add internationalization (i18n) support for user-facing error messages
   produced by the lexer, parser, schema validator and suggestions API.
   Ships translation catalogs for ``pl``, ``de``, ``fr``, ``es``, ``ru``,
   ``uk``, ``pt_BR``, ``it``, ``nl``, ``ja`` and ``zh_Hans``.
+* Modernized packaging and developer tooling: migrated from
+  ``setup.py``/``setup.cfg`` to ``pyproject.toml`` + uv, switched linting
+  from flake8/isort to ruff, switched the test runner to pytest, and added
+  bumpver for version management.
 
 0.19.1
 ------
