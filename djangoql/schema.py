@@ -511,6 +511,9 @@ class DjangoQLSchema:
         """
         Walk a validated AST and merge get_annotations() from every field that
         is actually referenced. Returns {alias: expression}.
+
+        Must be called after validate(ast): it assumes leaf nodes have a Name
+        on the left (as guaranteed by validation) and does not re-check.
         """
         annotations = {}
         if isinstance(node.operator, Logical):
