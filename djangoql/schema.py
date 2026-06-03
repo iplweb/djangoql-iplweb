@@ -20,16 +20,24 @@ class DjangoQLField:
     """
     Abstract searchable field
     """
+
     model = None
     name = None
     nullable = False
     suggest_options = False
+    suggested = True
     type = 'unknown'
     value_types = []
     value_types_description = ''
 
-    def __init__(self, model=None, name=None, nullable=None,
-                 suggest_options=None):
+    def __init__(
+        self,
+        model=None,
+        name=None,
+        nullable=None,
+        suggest_options=None,
+        suggested=None,
+    ):
         if model is not None:
             self.model = model
         if name is not None:
@@ -38,6 +46,8 @@ class DjangoQLField:
             self.nullable = nullable
         if suggest_options is not None:
             self.suggest_options = suggest_options
+        if suggested is not None:
+            self.suggested = suggested
 
     def _field_choices(self):
         if self.model:
@@ -138,8 +148,19 @@ class DjangoQLField:
         """
         search = '__'.join(path + [self.get_lookup_name()])
         op, invert = self.get_operator(operator)
-        q = models.Q(**{'%s%s' % (search, op): self.get_lookup_value(value)})
+        q = models.Q(**{f'{search}{op}': self.get_lookup_value(value)})
         return ~q if invert else q
+
+    def get_annotations(self, path):
+        """
+        Return a dict of {alias: expression} to be applied to the queryset via
+        .annotate() before filtering. Default: no annotations.
+
+        Only called for fields actually referenced in a query, so aggregate
+        fields produce SQL lazily. `path` is the list of names preceding this
+        field (relation hops), e.g. ['author'] for 'author.book__count'.
+        """
+        return {}
 
     def validate(self, value):
         if not self.nullable and value is None:
@@ -160,12 +181,14 @@ class DjangoQLField:
                     'be compared to {possible_values}, '
                     'but not to {value}',
                 )
-            raise DjangoQLSchemaError(msg.format(
-                field=self.name,
-                field_type=self.type,
-                possible_values=self.value_types_description,
-                value=repr(value),
-            ))
+            raise DjangoQLSchemaError(
+                msg.format(
+                    field=self.name,
+                    field_type=self.type,
+                    possible_values=self.value_types_description,
+                    value=repr(value),
+                )
+            )
 
 
 class IntField(DjangoQLField):
@@ -198,11 +221,12 @@ class StrField(DjangoQLField):
         lookup = {}
         if search:
             lookup['%s__icontains' % self.name] = search
-        return self.model.objects\
-            .filter(**lookup)\
-            .order_by(self.name)\
-            .values_list(self.name, flat=True)\
+        return (
+            self.model.objects.filter(**lookup)
+            .order_by(self.name)
+            .values_list(self.name, flat=True)
             .distinct()
+        )
 
 
 class BoolField(DjangoQLField):
@@ -297,15 +321,16 @@ class DateTimeField(DjangoQLField):
         # which is not what we want for this case.
         val = value if operator in ('~', '!~') else self.get_lookup_value(value)
 
-        q = models.Q(**{'%s%s' % (search, op): val})
+        q = models.Q(**{f'{search}{op}': val})
         return ~q if invert else q
 
 
 class RelationField(DjangoQLField):
     type = 'relation'
 
-    def __init__(self, model, name, related_model, nullable=False,
-                 suggest_options=False):
+    def __init__(
+        self, model, name, related_model, nullable=False, suggest_options=False
+    ):
         super().__init__(
             model=model,
             name=name,
@@ -454,6 +479,7 @@ class DjangoQLSchema:
 
     def as_dict(self):
         from .serializers import DjangoQLSchemaSerializer
+
         warnings.warn(
             'DjangoQLSchema.as_dict() is deprecated and will be removed in '
             'future releases. Please use DjangoQLSchemaSerializer instead.',
@@ -468,8 +494,10 @@ class DjangoQLSchema:
             field = self.models[model].get(name_part)
             if not field:
                 raise DjangoQLSchemaError(
-                    _('Unknown field: {field}. Possible choices are: '
-                      '{choices}').format(
+                    _(
+                        'Unknown field: {field}. Possible choices are: '
+                        '{choices}'
+                    ).format(
                         field=name_part,
                         choices=', '.join(sorted(self.models[model].keys())),
                     ),
@@ -478,6 +506,24 @@ class DjangoQLSchema:
                 model = field.relation
                 field = None
         return field
+
+    def collect_annotations(self, node):
+        """
+        Walk a validated AST and merge get_annotations() from every field that
+        is actually referenced. Returns {alias: expression}.
+
+        Must be called after validate(ast): it assumes leaf nodes have a Name
+        on the left (as guaranteed by validation) and does not re-check.
+        """
+        annotations = {}
+        if isinstance(node.operator, Logical):
+            annotations.update(self.collect_annotations(node.left))
+            annotations.update(self.collect_annotations(node.right))
+            return annotations
+        field = self.resolve_name(node.left)
+        if field is not None:
+            annotations.update(field.get_annotations(node.left.parts[:-1]))
+        return annotations
 
     def validate(self, node):
         """
@@ -498,8 +544,10 @@ class DjangoQLSchema:
         if field is None:
             if value is not None:
                 raise DjangoQLSchemaError(
-                    _('Related model {model} can be compared to None only, '
-                      'but not to {value_type}').format(
+                    _(
+                        'Related model {model} can be compared to None only, '
+                        'but not to {value_type}'
+                    ).format(
                         model=node.left.value,
                         value_type=type(value).__name__,
                     ),

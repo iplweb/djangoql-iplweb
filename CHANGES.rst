@@ -15,6 +15,24 @@
   ``setup.py``/``setup.cfg`` to ``pyproject.toml`` + uv, switched linting
   from flake8/isort to ruff, switched the test runner to pytest, and added
   bumpver for version management.
+* Add opt-in **derived search fields** in ``djangoql.extras`` (enable via
+  ``ExtrasSchema`` or by composing ``DatePartsSchemaMixin`` /
+  ``AggregateSchemaMixin``):
+
+  * Date/time parts for ``DateField`` / ``DateTimeField`` / ``TimeField``,
+    e.g. ``written__year >= 2020``, ``written__month in (6, 7, 8)``,
+    ``written__hour < 9``, plus ``__date`` / ``__time`` extraction from
+    ``DateTimeField``.
+  * Relation aggregates computed as lazy, correlated subqueries:
+    ``<rel>__count`` for every to-many relation and
+    ``<rel>__<numeric_field>__{sum,avg,min,max}``. Aggregates are applied
+    only when referenced in a query and work in both the admin and the
+    queryset API.
+* Add a ``suggested`` flag to ``DjangoQLField`` (default ``True``) to control
+  whether a field appears in autocomplete suggestions, independent of value
+  suggestions (``suggest_options``).
+* Test suite can now run against PostgreSQL via testcontainers
+  (``DJANGOQL_TEST_DB=postgres``); CI exercises both SQLite and PostgreSQL.
 
 0.19.1
 ------

@@ -62,3 +62,28 @@ jobs:
       - name: Run tests
         # --no-sync so the matrix-pinned Django above is not reverted by uv.
         run: uv run --no-sync pytest
+
+  tests-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+      - name: Install gettext (required by django compilemessages)
+        run: sudo apt-get update && sudo apt-get install -y gettext
+      - name: Install dependencies (project + Django 5.2)
+        run: |
+          uv sync --all-extras
+          uv pip install "django~=5.2.0"
+      - name: Compile translation catalogs
+        working-directory: djangoql
+        run: uv run --no-sync django-admin compilemessages
+      - name: Run tests (PostgreSQL via testcontainers)
+        # --no-sync so the pinned Django above is not reverted by uv.
+        # Testcontainers manages the postgres:16-alpine container itself;
+        # no services: block needed — the runner's Docker daemon is used.
+        env:
+          DJANGOQL_TEST_DB: postgres
+        run: uv run --no-sync pytest

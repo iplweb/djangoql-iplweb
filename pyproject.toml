@@ -42,6 +42,8 @@ dev = [
     # supported version here so the test suite has something to run against.
     # CI overrides this per matrix entry.
     "django>=4.2",
+    "testcontainers[postgres]>=4.14.2",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [project.urls]
