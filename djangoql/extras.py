@@ -138,9 +138,9 @@ class AggregateField(IntField):
         )
 
     def annotation_alias(self, path):
-        # Django allows "__" in annotation aliases but forbids it inside field
-        # names, so joining path + name with "__" is collision-free. The
-        # "djangoql" prefix avoids clashing with real field/relation lookups.
+        # Django resolves annotation aliases by scanning LOOKUP_SEP-prefixes of
+        # a filter key, so aliases containing "__" work. The "djangoql" prefix
+        # prevents collisions with real model fields or other annotations.
         return LOOKUP_SEP.join(['djangoql', *path, self.name])
 
     def output_field(self):
@@ -266,6 +266,7 @@ class AggregateSchemaMixin:
                     isinstance(nf, self.NUMERIC_FIELDS)
                     and not nf.is_relation
                     and not getattr(nf, 'primary_key', False)
+                    and getattr(nf, 'editable', True)  # skip GFK/internal cols
                 ):
                     for agg_name, agg_cls in self.AGGREGATE_FIELDS:
                         fields.append(

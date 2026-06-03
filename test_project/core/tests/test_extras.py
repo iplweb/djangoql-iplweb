@@ -351,6 +351,7 @@ class AutoAggregateTest(TestCase):
         self.assertIn('book__count', names)
         self.assertNotIn('book__id__sum', names)
         self.assertNotIn('book__author__sum', names)
+        self.assertNotIn('book__object_id__sum', names)
 
     def test_multiple_aggregates_are_independent(self):
         # Two to-many aggregates in one query must not multiply each other.
