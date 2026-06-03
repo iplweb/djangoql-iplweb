@@ -73,3 +73,62 @@ class CollectAnnotationsTest(TestCase):
             schema=ProbeSchema,
         )
         self.assertNotIn('probe', unused.query.annotations)
+
+
+class DatePartsTest(TestCase):
+    def _where(self, search):
+        from djangoql.extras import DatePartsSchemaMixin
+
+        class S(DatePartsSchemaMixin, DjangoQLSchema):
+            pass
+
+        qs = apply_search(Book.objects.all(), search, schema=S)
+        return str(qs.query).split('WHERE')[1].strip()
+
+    def test_datetime_year(self):
+        # SQLite expands __year on a DateTimeField to a BETWEEN range rather
+        # than calling django_datetime_extract, so we verify the transform
+        # works correctly by checking the filtered results instead.
+        from django.contrib.auth.models import User
+        from django.utils.timezone import make_aware
+
+        author = User.objects.create_user('testauthor_year')
+        Book.objects.create(
+            name='Y2020',
+            author=author,
+            written=make_aware(
+                __import__('datetime').datetime(2020, 6, 15, 12, 0)
+            ),
+        )
+        Book.objects.create(
+            name='Y2021',
+            author=author,
+            written=make_aware(
+                __import__('datetime').datetime(2021, 6, 15, 12, 0)
+            ),
+        )
+        from djangoql.extras import DatePartsSchemaMixin
+
+        class S(DatePartsSchemaMixin, DjangoQLSchema):
+            pass
+
+        qs = apply_search(Book.objects.all(), 'written__year = 2020', schema=S)
+        names = list(qs.values_list('name', flat=True))
+        self.assertIn('Y2020', names)
+        self.assertNotIn('Y2021', names)
+
+    def test_datetime_hour(self):
+        where = self._where('written__hour >= 9').lower()
+        self.assertIn('hour', where)
+
+    def test_date_field_month(self):
+        where = self._where('published_date__month = 6').lower()
+        self.assertIn('month', where)
+
+    def test_time_field_minute(self):
+        where = self._where('published_time__minute = 30').lower()
+        self.assertIn('minute', where)
+
+    def test_datetime_date_extract(self):
+        where = self._where('written__date = "2020-01-01"').lower()
+        self.assertIn('date', where)
