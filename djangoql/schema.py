@@ -16,7 +16,7 @@ from .ast import Comparison, Const, List, Logical, Name, Node
 from .exceptions import DjangoQLSchemaError
 
 
-class DjangoQLField(object):
+class DjangoQLField:
     """
     Abstract searchable field
     """
@@ -319,7 +319,7 @@ class RelationField(DjangoQLField):
         return DjangoQLSchema.model_label(self.related_model)
 
 
-class DjangoQLSchema(object):
+class DjangoQLSchema:
     include = ()  # models to include into introspection
     exclude = ()  # models to exclude from introspection
     suggest_options = None

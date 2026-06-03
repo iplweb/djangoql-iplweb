@@ -3,7 +3,7 @@ from collections import OrderedDict
 from .schema import RelationField
 
 
-class DjangoQLSchemaSerializer(object):
+class DjangoQLSchemaSerializer:
     def serialize(self, schema):
         models = {}
         for model_label, fields in schema.models.items():

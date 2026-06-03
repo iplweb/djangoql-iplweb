@@ -30,7 +30,7 @@ def unescape(value):
     return re.sub(unescape_pattern, unescape_repl, value)
 
 
-class DjangoQLParser(object):
+class DjangoQLParser:
     def __init__(self, debug=False, **kwargs):
         self.default_lexer = DjangoQLLexer()
         self.tokens = self.default_lexer.tokens

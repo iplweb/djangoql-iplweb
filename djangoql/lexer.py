@@ -6,7 +6,7 @@ from ply.lex import TOKEN
 from .exceptions import DjangoQLLexerError
 
 
-class DjangoQLLexer(object):
+class DjangoQLLexer:
     def __init__(self, **kwargs):
         self._lexer = lex.lex(module=self, **kwargs)
         self.reset()

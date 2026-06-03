@@ -43,7 +43,7 @@ class DjangoQLChangeList(ChangeList):
         return params
 
 
-class DjangoQLSearchMixin(object):
+class DjangoQLSearchMixin:
     search_fields = ('_djangoql',)  # just a stub to have search input displayed
     djangoql_completion = True
     djangoql_completion_enabled_by_default = True

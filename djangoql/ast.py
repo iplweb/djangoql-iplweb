@@ -1,4 +1,4 @@
-class Node(object):
+class Node:
     def __str__(self):
         children = []
         for k, v in self.__dict__.items():
