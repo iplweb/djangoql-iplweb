@@ -17,6 +17,18 @@ uv run pre-commit install # install the git hook
 uv run pytest
 ```
 
+The suite runs against SQLite by default.  To run the same suite against a
+throwaway PostgreSQL container instead, set `DJANGOQL_TEST_DB=postgres`:
+
+```shell
+DJANGOQL_TEST_DB=postgres uv run pytest
+```
+
+This requires Docker to be running.  The first run will pull the
+`postgres:16-alpine` image from Docker Hub; subsequent runs reuse the local
+image.  The `testcontainers[postgres]` and `psycopg[binary]` packages are
+included in the `dev` extra and are installed by `uv sync --all-extras`.
+
 The suite runs against the bundled `test_project/`. To check translation
 catalogs locally, run `django-admin compilemessages` from the `djangoql/`
 directory first (requires the system `gettext` package).
