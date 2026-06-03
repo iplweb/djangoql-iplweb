@@ -30,12 +30,18 @@ def postgres_container():
 
     from testcontainers.postgres import PostgresContainer
 
-    with PostgresContainer('postgres:16-alpine', driver=None) as pg:
+    with PostgresContainer(
+        'postgres:16-alpine',  # pinned to match the CI Postgres version
+        driver=None,
+    ) as pg:
         yield pg
 
 
 @pytest.fixture(scope='session')
-def django_db_modify_db_settings(postgres_container):
+def django_db_modify_db_settings(
+    postgres_container,
+    django_db_modify_db_settings_parallel_suffix,  # preserve xdist/tox suffix
+):
     """Override pytest-django's hook to point Django's DATABASES at Postgres.
 
     This fixture is called by pytest-django right before the test database is
