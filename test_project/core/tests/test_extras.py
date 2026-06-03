@@ -402,3 +402,16 @@ class AutoAggregateTest(TestCase):
             schema=ExtrasSchema,
         )
         self.assertEqual(set(qs.values_list('name', flat=True)), {'g'})
+
+
+class BackwardCompatTest(TestCase):
+    def test_default_schema_unchanged(self):
+        # Stock schema adds no annotations and exposes no derived fields.
+        qs = apply_search(Book.objects.all(), 'name = "x"')
+        self.assertEqual(qs.query.annotations, {})
+        names = set(DjangoQLSchema(Book).models['core.book'].keys())
+        self.assertNotIn('written__year', names)
+        self.assertNotIn('author__count', names)
+
+    def test_stock_field_get_annotations_empty(self):
+        self.assertEqual(IntField(name='x').get_annotations([]), {})
