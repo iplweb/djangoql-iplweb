@@ -1,3 +1,4 @@
+# Tests for the core `suggested` flag and djangoql.extras derived fields.
 from django.test import TestCase
 
 from djangoql.schema import DjangoQLSchema, IntField
@@ -23,3 +24,11 @@ class SuggestedFlagTest(TestCase):
         book_fields = data['models']['core.book']
         self.assertIn('name', book_fields)
         self.assertNotIn('secret', book_fields)
+
+    def test_unsuggested_field_still_validates(self):
+        # suggested=False hides a field from autocomplete but it must remain
+        # usable in actual queries (validation/resolution still see it).
+        from djangoql.parser import DjangoQLParser
+
+        ast = DjangoQLParser().parse('secret > 0')
+        HiddenFieldSchema(Book).validate(ast)  # must not raise
