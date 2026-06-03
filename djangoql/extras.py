@@ -122,6 +122,7 @@ class AggregateField(IntField):
         owner_lookup,
         name,
         source_field=None,
+        # None preserves the subclass-level `nullable` class attr
         nullable=None,
         suggested=True,
     ):
@@ -191,6 +192,9 @@ class NumericAggregateField(AggregateField):
     value_types_description = _('numbers')
 
     def output_field(self):
+        # Float output is used for v1 simplicity. For a DecimalField source,
+        # very large sums could lose sub-unit precision; introduce a
+        # Decimal-typed output_field in future if exact typing is needed.
         return ORMFloatField()
 
 

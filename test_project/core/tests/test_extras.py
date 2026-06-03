@@ -309,3 +309,17 @@ class AggregatesTest(TestCase):
     def test_min_max(self):
         self.assertEqual(self._usernames('book__rating__min >= 10'), {'v'})
         self.assertEqual(self._usernames('book__rating__max <= 4'), {'u'})
+
+    def test_numeric_aggregate_none_validates(self):
+        # avg/sum/min/max return SQL NULL for an empty set, so "= None" is a
+        # valid, non-raising query (unlike count which is non-nullable).
+        from djangoql.parser import DjangoQLParser
+
+        ast = DjangoQLParser().parse('book__rating__avg = None')
+        _AggSchema(User).validate(ast)  # must not raise
+
+    def test_avg_none_matches_user_with_no_books(self):
+        User.objects.create(username='no_books')
+        result = self._usernames('book__rating__avg = None')
+        self.assertIn('no_books', result)
+        self.assertNotIn('u', result)
