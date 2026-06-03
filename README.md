@@ -7,6 +7,8 @@
 
 Advanced search language for Django, with auto-completion. Supports logical operators, parenthesis, table joins, and works with any Django model. Tested on Python 3.10–3.14, Django 5.2 and 6.0. The auto-completion feature has been tested in Chrome, Firefox, Safari, IE9+.
 
+> This is the **iplweb** fork of [DjangoQL](https://github.com/ivelum/djangoql) by ivelum, adding internationalization (i18n) and modernized packaging/tooling. It is published on PyPI as **`djangoql-iplweb`**, but the import name stays `djangoql` (so `INSTALLED_APPS` and `import djangoql` are unchanged).
+
 See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 
 ![DjangoQL auto-completion example](https://raw.githubusercontent.com/iplweb/djangoql-iplweb/master/djangoql/static/djangoql/img/completion_example_scaled.png)
@@ -56,13 +58,13 @@ DjangoQL is tested against the following Django × Python combinations:
 Using [uv](https://docs.astral.sh/uv/) (recommended):
 
 ``` shell
-$ uv add djangoql
+$ uv add djangoql-iplweb
 ```
 
 Using pip:
 
 ``` shell
-$ pip install djangoql
+$ pip install djangoql-iplweb
 ```
 
 Add `'djangoql'` to `INSTALLED_APPS` in your `settings.py`:
@@ -433,7 +435,7 @@ qs = apply_search(qs, 'groups = None', schema=CustomSchema)
 
 The completion widget is not tightly coupled to Django admin, so you can easily use it outside of the admin if you want. The widget is [available on npm](https://www.npmjs.com/package/djangoql-completion) as a standalone package. See the source code and the docs in the [djangoql-completion](https://github.com/ivelum/djangoql-completion) repo on GitHub.
 
-The completion widget is also bundled with the [djangoql](https://pypi.org/project/djangoql/) Python package on PyPI. If you're not using Webpack or another JavaScript bundler, you can use the pre-built version that ships with the Python package. Here is an example:
+The completion widget is also bundled with the [djangoql-iplweb](https://pypi.org/project/djangoql-iplweb/) Python package on PyPI. If you're not using Webpack or another JavaScript bundler, you can use the pre-built version that ships with the Python package. Here is an example:
 
 Template code, `completion_demo.html`:
 

@@ -1,9 +1,12 @@
 0.20.0
 ------
 
+* First release of the ``djangoql-iplweb`` fork (the import name is still
+  ``djangoql``).
 * **Breaking:** dropped support for Python older than 3.10 and Django older
   than 5.2. This release targets Python 3.10–3.14 and Django 5.2 LTS / 6.0.
-  Projects running older Python or Django should stay on the 0.19.x series.
+  Projects running older Python or Django should use the upstream ``djangoql``
+  package (0.19.x) instead.
 * Add internationalization (i18n) support for user-facing error messages
   produced by the lexer, parser, schema validator and suggestions API.
   Ships translation catalogs for ``pl``, ``de``, ``fr``, ``es``, ``ru``,

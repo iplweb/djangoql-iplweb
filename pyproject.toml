@@ -3,14 +3,15 @@ requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "djangoql"
+name = "djangoql-iplweb"
 dynamic = ["version"]
-description = "DjangoQL: Advanced search language for Django"
+description = "DjangoQL: Advanced search language for Django (iplweb fork with i18n)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name = "Denis Stebunov", email = "support@ivelum.com"}]
+maintainers = [{name = "Michał Pasternak", email = "michal.dtz@gmail.com"}]
 keywords = ["django", "search", "query-language", "admin", "autocomplete"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -45,9 +46,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ivelum/djangoql/"
-Repository = "https://github.com/ivelum/djangoql/"
-Issues = "https://github.com/ivelum/djangoql/issues"
+Homepage = "https://github.com/iplweb/djangoql-iplweb"
+Repository = "https://github.com/iplweb/djangoql-iplweb"
+Issues = "https://github.com/iplweb/djangoql-iplweb/issues"
 
 [tool.setuptools]
 packages = ["djangoql"]
