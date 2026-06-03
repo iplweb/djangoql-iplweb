@@ -11,3 +11,9 @@ djangoql.egg-info
 
 .venv/
 uv.lock
+
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
