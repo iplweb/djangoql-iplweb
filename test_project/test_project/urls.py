@@ -14,17 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls import include
 from django.contrib import admin
-
-
-try:
-    from django.urls import re_path  # Django >= 4.0
-except ImportError:
-    try:
-        from django.conf.urls import re_path  # Django < 4.0
-    except ImportError:  # Django < 2.0
-        from django.conf.urls import url as re_path
+from django.urls import include, re_path
 
 from core.admin import zaibatsu_admin_site
 from core.views import completion_demo

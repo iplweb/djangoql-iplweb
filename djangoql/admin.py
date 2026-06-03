@@ -7,6 +7,7 @@ from django.db import DataError, NotSupportedError
 from django.forms import Media
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.urls import re_path, reverse
 from django.views.generic import TemplateView
 
 from .exceptions import DjangoQLError
@@ -15,19 +16,6 @@ from .schema import DjangoQLSchema
 from .serializers import SuggestionsAPISerializer
 from .views import SuggestionsAPIView
 
-
-try:
-    from django.core.urlresolvers import reverse
-except ImportError:  # Django 2.0
-    from django.urls import reverse
-
-try:
-    from django.urls import re_path  # Django >= 4.0
-except ImportError:
-    try:
-        from django.conf.urls import re_path  # Django < 4.0
-    except ImportError:  # Django < 2.0
-        from django.conf.urls import url as re_path
 
 DJANGOQL_SEARCH_MARKER = 'q-l'
 
