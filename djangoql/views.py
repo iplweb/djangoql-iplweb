@@ -80,4 +80,9 @@ class SuggestionsAPIView(View):
                     field=field.name,
                 ),
             )
+        # Non-breaking hook: fields that opt into request-aware suggestions
+        # (e.g. AutocompleteField with a url provider) receive the current
+        # request. Base fields don't define set_request and are unaffected.
+        if hasattr(field, 'set_request'):
+            field.set_request(self.request)
         return field.get_options(search)

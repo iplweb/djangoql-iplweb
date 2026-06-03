@@ -1,3 +1,20 @@
+Unreleased
+----------
+
+* Add pluggable **autocomplete value fields** in ``djangoql.extras``
+  (``AutocompleteField`` + ``AutocompleteSchemaMixin``). A field's value
+  suggestions can come from an arbitrary source — most usefully an existing
+  django-autocomplete-light endpoint — letting a user pick an object and filter
+  by its primary key. Suggestions are formatted ``"<label> [<id>]"`` and the
+  field filters ``<field> = pk`` (``=``, ``!=`` and ``in`` supported), with an
+  ``icontains`` free-text fallback over ``search_fields``. Three providers are
+  supported (priority high→low): a ``url`` (a DAL endpoint resolved and called
+  **in-process** with the current request), a ``queryset`` / callable, or a
+  subclass override. ``SuggestionsAPIView`` threads the current request into the
+  field via a non-breaking ``set_request`` hook. ``AutocompleteSchemaMixin`` is
+  also included in ``ExtrasSchema``. The change is server-side only (no
+  JavaScript changes), additive and non-breaking.
+
 0.21.0
 ------
 
