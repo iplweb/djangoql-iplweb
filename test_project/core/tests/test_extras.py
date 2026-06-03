@@ -207,3 +207,13 @@ class CountFKTest(TestCase):
             User.objects.all(), 'username = "x"', schema=_CountSchemaFK
         )
         self.assertEqual(qs.query.annotations, {})
+
+    def test_count_not_nullable(self):
+        from djangoql.exceptions import DjangoQLSchemaError
+
+        with self.assertRaises(DjangoQLSchemaError):
+            apply_search(
+                User.objects.all(),
+                'book__count = None',
+                schema=_CountSchemaFK,
+            )

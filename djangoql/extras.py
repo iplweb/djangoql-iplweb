@@ -120,7 +120,7 @@ class AggregateField(IntField):
         owner_lookup,
         name,
         source_field=None,
-        nullable=True,
+        nullable=None,
         suggested=True,
     ):
         self.relation_name = relation_name
@@ -135,8 +135,10 @@ class AggregateField(IntField):
         )
 
     def annotation_alias(self, path):
-        joined = '_'.join(list(path) + [self.name])
-        return 'djangoql_' + joined.replace('__', '_')
+        # Django allows "__" in annotation aliases but forbids it inside field
+        # names, so joining path + name with "__" is collision-free. The
+        # "djangoql" prefix avoids clashing with real field/relation lookups.
+        return LOOKUP_SEP.join(['djangoql', *path, self.name])
 
     def output_field(self):
         return ORMIntegerField()
@@ -168,6 +170,7 @@ class AggregateField(IntField):
 class CountField(AggregateField):
     aggregate = Count
     aggregate_name = 'count'
+    nullable = False  # Coalesce(..., 0) guarantees a non-null integer
 
     def build_expression(self, path):
         # Coalesce to 0 so "<rel>__count = 0" matches rows with no relations.
