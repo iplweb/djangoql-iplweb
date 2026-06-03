@@ -63,7 +63,7 @@ And in your `views.py`:
 import json
 
 from django.contrib.auth.models import Group, User
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from djangoql.exceptions import DjangoQLError
@@ -95,7 +95,7 @@ def completion_demo(request):
     introspections = DjangoQLSchemaSerializer().serialize(
       UserQLSchema(query.model),
     )
-    return render_to_response('completion_demo.html', {
+    return render(request, 'completion_demo.html', {
         'q': q,
         'error': error,
         'search_results': query,

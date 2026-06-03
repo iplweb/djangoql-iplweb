@@ -1,6 +1,7 @@
 # DjangoQL
 
 [![Tests](https://github.com/iplweb/djangoql-iplweb/actions/workflows/tests.yaml/badge.svg)](https://github.com/iplweb/djangoql-iplweb/actions/workflows/tests.yaml)
+[![PyPI](https://img.shields.io/pypi/v/djangoql-iplweb)](https://pypi.org/project/djangoql-iplweb/)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/iplweb/djangoql-iplweb)
 [![Django Version](https://img.shields.io/badge/django-5.2%20%7C%206.0-blue)](https://github.com/iplweb/djangoql-iplweb)
 [![License](https://img.shields.io/github/license/iplweb/djangoql-iplweb)](LICENSE)

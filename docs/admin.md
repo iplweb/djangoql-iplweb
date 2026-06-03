@@ -27,7 +27,7 @@ class BookAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     search_fields = ('title', 'author__name')
 ```
 
-For the example above, a checkbox that controls search mode will appear near the search input. If the checkbox is on, then DjanqoQL search is used. There is also an option that controls if that checkbox is enabled by default - `djangoql_completion_enabled_by_default` (set to `True` by default):
+For the example above, a checkbox that controls search mode will appear near the search input. If the checkbox is on, then DjangoQL search is used. There is also an option that controls if that checkbox is enabled by default - `djangoql_completion_enabled_by_default` (set to `True` by default):
 
 ``` python
 @admin.register(Book)

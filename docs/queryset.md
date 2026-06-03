@@ -54,10 +54,10 @@ class Book(models.Model):
     objects = BookQuerySet.as_manager()
 
 # Now, Book.objects.djangoql() will use BookSchema by default:
-Book.objects.djangoql('name ~ "Peace")  # uses BookSchema
+Book.objects.djangoql('name ~ "Peace"')  # uses BookSchema
 
 # Overriding default queryset schema with AnotherSchema:
-Book.objects.djangoql('name ~ "Peace", schema=AnotherSchema)
+Book.objects.djangoql('name ~ "Peace"', schema=AnotherSchema)
 ```
 
 You can also provide schema as an option for `apply_search()`
