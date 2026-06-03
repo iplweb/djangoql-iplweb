@@ -9,7 +9,6 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
 
-from .compat import text_type
 from .exceptions import DjangoQLError
 from .queryset import apply_search
 from .schema import DjangoQLSchema
@@ -109,7 +108,7 @@ class DjangoQLSearchMixin(object):
         if isinstance(exception, ValidationError):
             msg = exception.messages[0]
         else:
-            msg = text_type(exception)
+            msg = str(exception)
         return render_to_string('djangoql/error_message.html', context={
             'error_message': msg,
             'djangoql_syntax_help_url': reverse(

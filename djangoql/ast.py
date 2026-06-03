@@ -1,12 +1,9 @@
-from .compat import text_type
-
-
 class Node(object):
     def __str__(self):
         children = []
         for k, v in self.__dict__.items():
             if isinstance(v, (list, tuple)):
-                v = '[%s]' % ', '.join([text_type(v) for v in v if v])
+                v = '[%s]' % ', '.join([str(v) for v in v if v])
             children.append('%s=%s' % (k, v))
         return '<%s%s%s>' % (
             self.__class__.__name__,

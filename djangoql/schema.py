@@ -13,7 +13,6 @@ from django.utils.timezone import get_current_timezone
 from django.utils.translation import gettext_lazy as _
 
 from .ast import Comparison, Const, List, Logical, Name, Node
-from .compat import text_type
 from .exceptions import DjangoQLSchemaError
 
 
@@ -61,7 +60,7 @@ class DjangoQLField(object):
         if choices:
             search = search.lower()
             for c in choices:
-                choice = text_type(c[1])
+                choice = str(c[1])
                 if search in choice.lower():
                     result.append(choice)
         return result
@@ -189,7 +188,7 @@ class FloatField(DjangoQLField):
 
 class StrField(DjangoQLField):
     type = 'str'
-    value_types = [text_type]
+    value_types = [str]
     value_types_description = _('strings')
 
     def get_options(self, search):
@@ -214,7 +213,7 @@ class BoolField(DjangoQLField):
 
 class DateField(DjangoQLField):
     type = 'date'
-    value_types = [text_type]
+    value_types = [str]
     value_types_description = _('dates in "YYYY-MM-DD" format')
 
     def validate(self, value):
@@ -245,7 +244,7 @@ class DateField(DjangoQLField):
 
 class DateTimeField(DjangoQLField):
     type = 'datetime'
-    value_types = [text_type]
+    value_types = [str]
     value_types_description = _('timestamps in "YYYY-MM-DD HH:MM" format')
 
     def validate(self, value):
@@ -362,7 +361,7 @@ class DjangoQLSchema(object):
 
     @classmethod
     def model_label(self, model):
-        return text_type(model._meta)
+        return str(model._meta)
 
     def introspect(self, model, exclude=()):
         """
