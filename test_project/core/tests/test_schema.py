@@ -117,6 +117,8 @@ class DjangoQLSchemaTest(TestCase):
                 'name',
                 'object_id',
                 'price',
+                'published_date',
+                'published_time',
                 'rating',
                 'similar_books',
                 'written',

@@ -21,6 +21,8 @@ class Book(models.Model):
         choices=GENRES.items(),
     )
     written = models.DateTimeField(default=now)
+    published_date = models.DateField(null=True, blank=True)
+    published_time = models.TimeField(null=True, blank=True)
     is_published = models.BooleanField(default=False)
     rating = models.FloatField(null=True)
     price = models.DecimalField(max_digits=7, decimal_places=2, null=True)
