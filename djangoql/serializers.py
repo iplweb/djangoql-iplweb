@@ -34,7 +34,7 @@ class SuggestionsAPISerializer(DjangoQLSchemaSerializer):
         self.suggestions_api_url = suggestions_api_url
 
     def serialize(self, schema):
-        result = super(SuggestionsAPISerializer, self).serialize(schema)
+        result = super().serialize(schema)
         result['suggestions_api_url'] = self.suggestions_api_url
         return result
 

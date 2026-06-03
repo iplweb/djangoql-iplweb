@@ -6,10 +6,10 @@ class DjangoQLError(Exception):
         self.value = value
         self.line = line
         self.column = column
-        super(DjangoQLError, self).__init__(message)
+        super().__init__(message)
 
     def __str__(self):
-        message = super(DjangoQLError, self).__str__()
+        message = super().__str__()
         if self.line:
             if self.column:
                 position_info = gettext('Line %(line)s, col %(col)s') % {

@@ -177,7 +177,7 @@ class IntField(DjangoQLField):
         """
         Support enum-like choices defined on an integer field
         """
-        return super(IntField, self).validate(self.get_lookup_value(value))
+        return super().validate(self.get_lookup_value(value))
 
 
 class FloatField(DjangoQLField):
@@ -192,7 +192,7 @@ class StrField(DjangoQLField):
     value_types_description = _('strings')
 
     def get_options(self, search):
-        choice_options = super(StrField, self).get_options(search)
+        choice_options = super().get_options(search)
         if choice_options:
             return choice_options
         lookup = {}
@@ -217,7 +217,7 @@ class DateField(DjangoQLField):
     value_types_description = _('dates in "YYYY-MM-DD" format')
 
     def validate(self, value):
-        super(DateField, self).validate(value)
+        super().validate(value)
         try:
             self.get_lookup_value(value)
         except ValueError:
@@ -248,7 +248,7 @@ class DateTimeField(DjangoQLField):
     value_types_description = _('timestamps in "YYYY-MM-DD HH:MM" format')
 
     def validate(self, value):
-        super(DateTimeField, self).validate(value)
+        super().validate(value)
         try:
             self.get_lookup_value(value)
         except ValueError:
@@ -306,7 +306,7 @@ class RelationField(DjangoQLField):
 
     def __init__(self, model, name, related_model, nullable=False,
                  suggest_options=False):
-        super(RelationField, self).__init__(
+        super().__init__(
             model=model,
             name=name,
             nullable=nullable,

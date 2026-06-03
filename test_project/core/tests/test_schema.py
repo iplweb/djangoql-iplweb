@@ -30,7 +30,7 @@ class BookCustomFieldsSchema(DjangoQLSchema):
     def get_fields(self, model):
         if model == Book:
             return ['name', 'is_published']
-        return super(BookCustomFieldsSchema, self).get_fields(model)
+        return super().get_fields(model)
 
 
 class WrittenInYearField(IntField):

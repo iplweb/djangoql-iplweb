@@ -34,7 +34,7 @@ DJANGOQL_SEARCH_MARKER = 'q-l'
 
 class DjangoQLChangeList(ChangeList):
     def get_filters_params(self, *args, **kwargs):
-        params = super(DjangoQLChangeList, self).get_filters_params(
+        params = super().get_filters_params(
             *args,
             **kwargs
         )
@@ -67,7 +67,7 @@ class DjangoQLSearchMixin(object):
             self.search_mode_toggle_enabled() and
             not self.djangoql_search_enabled(request)
         ):
-            return super(DjangoQLSearchMixin, self).get_search_results(
+            return super().get_search_results(
                 request=request,
                 queryset=queryset,
                 search_term=search_term,
@@ -118,7 +118,7 @@ class DjangoQLSearchMixin(object):
 
     @property
     def media(self):
-        media = super(DjangoQLSearchMixin, self).media
+        media = super().media
         if self.djangoql_completion:
             js = [
                 'djangoql/js/completion.js',
@@ -165,7 +165,7 @@ class DjangoQLSearchMixin(object):
                     name='djangoql_syntax_help',
                 ),
             ]
-        return custom_urls + super(DjangoQLSearchMixin, self).get_urls()
+        return custom_urls + super().get_urls()
 
     def introspect(self, request):
         suggestions_url = reverse('%s:%s_%s_djangoql_suggestions' % (
