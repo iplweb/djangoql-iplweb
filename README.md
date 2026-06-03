@@ -543,6 +543,12 @@ def completion_demo(request):
     })
 ```
 
+## Supported by
+
+This fork is graciously supported and maintained by **[iplweb](https://www.iplweb.pl/)**.
+
+<a href="https://www.iplweb.pl/"><img src="https://avatars.githubusercontent.com/iplweb" alt="iplweb" width="96" /></a>
+
 ## License
 
 MIT
