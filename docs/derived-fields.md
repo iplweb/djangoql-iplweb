@@ -92,7 +92,7 @@ that type.
 
 ### Integer part examples
 
-All part fields are integers and support `=`, `!=`, `>`, `>=`, `<`, `<=`, and `in`:
+All part fields are integers and support `=`, `!=`, `>`, `>=`, `<`, `<=`, `in`, and `not in`:
 
 ```
 written__year >= 2020
