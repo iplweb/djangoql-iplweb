@@ -61,6 +61,12 @@ jobs:
       - name: Run tests
         # --no-sync so the matrix-pinned Django above is not reverted by uv.
         run: uv run --no-sync pytest
+      - name: Run example_project tests
+        # The example_project is a separate Django project (its own settings and
+        # models), so it isn't collected by the main pytest run; exercise its
+        # suite via manage.py so the showcase schema/views don't rot.
+        working-directory: example_project
+        run: uv run --no-sync python manage.py test library -v2
 
   tests-postgres:
     runs-on: ubuntu-latest

@@ -131,6 +131,21 @@ class DatePartsTest(TestCase):
         where = self._where('written__date = "2020-01-01"').lower()
         self.assertIn('date', where)
 
+    def test_time_extract_rejects_invalid_value(self):
+        from djangoql.exceptions import DjangoQLSchemaError
+        from djangoql.extras import DatePartsSchemaMixin
+
+        class S(DatePartsSchemaMixin, DjangoQLSchema):
+            pass
+
+        with self.assertRaises(DjangoQLSchemaError):
+            apply_search(Book.objects.all(), 'written__time = "nope"', schema=S)
+
+    def test_time_extract_accepts_value_list(self):
+        # The `in (...)` path runs get_lookup_value over a list of times.
+        where = self._where('written__time in ("09:30", "10:30")').lower()
+        self.assertIn('time', where)
+
     def test_datetime_time_extract(self):
         from django.utils.timezone import make_aware
 
@@ -468,3 +483,46 @@ class BackwardCompatTest(TestCase):
 
     def test_stock_field_get_annotations_empty(self):
         self.assertEqual(IntField(name='x').get_annotations([]), {})
+
+
+class AggregateSynthesisEdgeCasesTest(TestCase):
+    """resolve_unknown / _synthesize_aggregate fall-throughs + hint helpers."""
+
+    def _error(self, qs, search):
+        from djangoql.exceptions import DjangoQLSchemaError
+        from djangoql.extras import ExtrasSchema
+
+        with self.assertRaises(DjangoQLSchemaError):
+            apply_search(qs, search, schema=ExtrasSchema)
+
+    def test_dot_name_without_aggregate_suffix_is_unknown(self):
+        # 'book.nonexistent' — the trailing part has no '__', so it can't be a
+        # numeric aggregate; falls through to the "unknown field" error.
+        self._error(User.objects.all(), 'book.nonexistent = 1')
+
+    def test_aggregate_over_missing_source_is_unknown(self):
+        # 'book.bogus__sum' — 'bogus' is not a field on the related model.
+        self._error(User.objects.all(), 'book.bogus__sum > 0')
+
+    def test_aggregate_over_hidden_reverse_relation_is_unknown(self):
+        # Book.similar_books has related_name='+' (hidden reverse): no usable
+        # owner lookup, so no aggregate can be synthesized through it.
+        self._error(Book.objects.all(), 'similar_books.rating__sum > 0')
+
+    def test_hint_count_only_when_related_has_no_numeric_field(self):
+        # Group's to-many relations point at models with no aggregatable numeric
+        # field, so the hint offers a __count example but no .<field>__sum one.
+        from djangoql.exceptions import DjangoQLSchemaError
+        from djangoql.extras import ExtrasSchema
+
+        try:
+            apply_search(Group.objects.all(), 'nope = 1', schema=ExtrasSchema)
+        except DjangoQLSchemaError as exc:
+            msg = str(exc)
+        else:
+            self.fail('expected DjangoQLSchemaError')
+        self.assertIn('__count', msg)
+        # The concrete example list (after "e.g.") must not contain a dot-form
+        # numeric aggregate, since none is available.
+        example_part = msg.split('e.g.')[-1]
+        self.assertNotIn('__sum', example_part)

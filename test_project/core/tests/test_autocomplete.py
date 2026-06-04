@@ -1,4 +1,6 @@
 # Tests for djangoql.extras.AutocompleteField / AutocompleteSchemaMixin.
+import json
+
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 
@@ -7,6 +9,7 @@ from djangoql.parser import DjangoQLParser
 from djangoql.queryset import apply_search
 from djangoql.schema import DjangoQLSchema, RelationField
 from djangoql.serializers import SuggestionsAPISerializer
+from djangoql.views import SuggestionsAPIView
 
 from ..models import Book
 
@@ -335,3 +338,164 @@ class RelAndPickerCoexistTest(TestCase):
         self.assertIsInstance(fields['author__rel'], AutocompleteField)
         self.assertIsInstance(fields['author'], RelationField)
         self.assertEqual(fields['author'].type, 'relation')
+
+
+class AutocompleteEdgeCasesTest(TestCase):
+    """Branches of AutocompleteField the happy-path tests don't reach."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.kow = User.objects.create(username='Jan Kowalski')
+
+    def test_validate_rejects_non_string(self):
+        from djangoql.exceptions import DjangoQLSchemaError
+
+        field = AutocompleteField(model=Book, name='author')
+        with self.assertRaises(DjangoQLSchemaError):
+            field.validate(5)
+
+    def test_validate_allows_none(self):
+        field = AutocompleteField(model=Book, name='author')
+        field.validate(None)  # must not raise
+
+    def test_get_options_without_provider_raises(self):
+        # No url, no queryset/get_queryset, no override -> explicit error.
+        field = AutocompleteField(model=Book, name='author')
+        with self.assertRaises(NotImplementedError):
+            list(field.get_options('x'))
+
+    def test_default_label_and_id(self):
+        # No label/id_of -> str(obj) and obj.pk.
+        field = AutocompleteField(
+            model=Book,
+            name='author',
+            queryset=lambda s: User.objects.filter(username__icontains=s),
+        )
+        self.assertEqual(
+            list(field.get_options('kowalski')),
+            ['Jan Kowalski #%d' % self.kow.pk],
+        )
+
+    def test_queryset_object_with_search_fields(self):
+        # A queryset *object* (not a callable) is filtered via search_fields.
+        field = AutocompleteField(
+            model=Book,
+            name='author',
+            queryset=User.objects.all().order_by('username'),
+            search_fields=['username'],
+            label=lambda u: u.username,
+        )
+        self.assertEqual(
+            list(field.get_options('kowalski')),
+            ['Jan Kowalski #%d' % self.kow.pk],
+        )
+
+    def test_free_text_lookup_without_search_fields_uses_field_name(self):
+        # No embedded id and no search_fields -> icontains on the lookup name.
+        field = AutocompleteField(model=Book, name='name')
+        q = field.get_lookup([], '=', 'foo')
+        self.assertIn('name__icontains', str(q))
+
+    def test_get_lookup_value_parses_id(self):
+        field = AutocompleteField(model=Book, name='author')
+        self.assertEqual(field.get_lookup_value('Jan #7'), 7)
+
+    def test_get_queryset_callable_and_custom_id_of(self):
+        # The explicit get_queryset hook and a custom id_of are both honored.
+        field = AutocompleteField(
+            model=Book,
+            name='author',
+            get_queryset=lambda s: User.objects.filter(username__icontains=s),
+            label=lambda u: u.username,
+            id_of=lambda u: u.pk * 1000,
+        )
+        self.assertEqual(
+            list(field.get_options('kowalski')),
+            ['Jan Kowalski #%d' % (self.kow.pk * 1000)],
+        )
+
+    def test_url_provider_with_raw_path_and_no_request(self):
+        # url given as a literal path (not a reverse name): reverse() misses, we
+        # fall back to the path; with no bound request a throwaway one is built.
+        field = AutocompleteField(
+            model=Book,
+            name='author',
+            url='/autocomplete/user/',
+        )
+        self.assertEqual(
+            list(field.get_options('kowalski')),
+            ['Jan Kowalski #%d' % self.kow.pk],
+        )
+
+
+class AutocompleteConfigShapeTest(TestCase):
+    """_build_autocomplete_field accepts a dict, an instance, or a callable, and
+    backfills nullable from the model field when the picker name is real."""
+
+    def _schema(self, config):
+        class S(AutocompleteSchemaMixin, DjangoQLSchema):
+            include = (Book, User)
+            autocomplete = {Book: {'author': config}}
+
+        return S(Book)
+
+    def test_dict_config(self):
+        field = self._schema({'search_fields': ['username']}).models[
+            'core.book'
+        ]['author']
+        self.assertIsInstance(field, AutocompleteField)
+        self.assertEqual(field.name, 'author')
+        self.assertIs(field.model, Book)
+
+    def test_instance_config(self):
+        instance = AutocompleteField(search_fields=['username'])
+        field = self._schema(instance).models['core.book']['author']
+        self.assertIs(field, instance)
+        # model/name are backfilled from the schema context.
+        self.assertEqual(field.name, 'author')
+        self.assertIs(field.model, Book)
+
+    def test_callable_config(self):
+        def make(model, field_name):
+            return AutocompleteField(
+                model=model, name=field_name, search_fields=['username']
+            )
+
+        field = self._schema(make).models['core.book']['author']
+        self.assertIsInstance(field, AutocompleteField)
+        self.assertEqual(field.name, 'author')
+
+    def test_nullable_backfilled_from_model_field(self):
+        # content_type is a nullable FK; the picker inherits nullable=True even
+        # though the config doesn't set it.
+        field = self._schema_for(
+            'content_type', {'queryset': lambda s: []}
+        ).models['core.book']['content_type']
+        self.assertTrue(field.nullable)
+
+    def _schema_for(self, field_name, config):
+        class S(AutocompleteSchemaMixin, DjangoQLSchema):
+            include = (Book, User)
+            autocomplete = {Book: {field_name: config}}
+
+        return S(Book)
+
+
+class SuggestionsViewThreadsRequestTest(TestCase):
+    """SuggestionsAPIView must hand the live request to request-aware fields
+    (AutocompleteField.set_request) so url providers can call views in-process.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.kow = User.objects.create(username='Jan Kowalski')
+
+    def test_set_request_threaded_into_autocomplete_field(self):
+        view = SuggestionsAPIView.as_view(
+            schema=QuerysetAutocompleteSchema(Book),
+        )
+        request = RequestFactory().get('/?field=author&search=kowalski')
+        response = view(request)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data['items'], ['Jan Kowalski #%d' % self.kow.pk])

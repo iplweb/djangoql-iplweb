@@ -11,6 +11,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from core.admin import BookAdmin, CustomUserAdmin
+from djangoql.exceptions import DjangoQLError
 
 from ..models import Book
 
@@ -402,3 +403,79 @@ class DjangoQLSearchFlowTest(TestCase):
             'djangoql/js/completion_admin_toggle_off.js',
             rendered_off,
         )
+
+
+class EmptyBreakdownTest(TestCase):
+    """djangoql_add_empty_breakdown: a valid search returning zero rows gets a
+    warning explaining *where* the query runs out of data; failures in that
+    diagnostic must never break the changelist."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_superuser(
+            username='boss-breakdown',
+            email='bd@derp.rr',
+            password='lol',
+        )
+        Book.objects.create(name='alpha', author=cls.user)
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.book_admin = django_admin.site._registry[Book]
+
+    def _request(self):
+        request = self.factory.get('/')
+        request.user = self.user
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        return request
+
+    def _search(self, admin_obj, term):
+        request = self._request()
+        result, _ = admin_obj.get_search_results(
+            request,
+            Book.objects.all(),
+            term,
+        )
+        return request, result
+
+    def test_empty_result_adds_breakdown_warning(self):
+        # A valid query that matches nothing -> exactly one WARNING carrying the
+        # rendered breakdown.
+        request, result = self._search(self.book_admin, 'name = "nope"')
+        self.assertEqual(list(result), [])
+        queued = request._messages._queued_messages
+        self.assertEqual(len(queued), 1)
+        self.assertEqual(queued[0].level, WARNING)
+
+    def test_non_empty_result_has_no_breakdown(self):
+        request, result = self._search(self.book_admin, 'name = "alpha"')
+        self.assertEqual([b.name for b in result], ['alpha'])
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_breakdown_disabled_skips(self):
+        admin_obj = BookAdmin(Book, django_admin.site)
+        admin_obj.djangoql_explain_empty = False
+        request, result = self._search(admin_obj, 'name = "nope"')
+        self.assertEqual(list(result), [])
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_breakdown_failure_is_swallowed(self):
+        # If explain_empty blows up, the changelist still renders the (empty)
+        # result with no warning rather than 500-ing.
+        with mock.patch(
+            'djangoql.admin.explain_empty',
+            side_effect=DjangoQLError('boom'),
+        ):
+            request, result = self._search(self.book_admin, 'name = "nope"')
+        self.assertEqual(list(result), [])
+        self.assertEqual(len(request._messages._queued_messages), 0)
+
+    def test_breakdown_none_adds_no_warning(self):
+        # explain_empty returning None (e.g. not actually empty) adds nothing.
+        with mock.patch(
+            'djangoql.admin.explain_empty',
+            return_value=None,
+        ):
+            request, _ = self._search(self.book_admin, 'name = "nope"')
+        self.assertEqual(len(request._messages._queued_messages), 0)
