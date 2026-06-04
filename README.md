@@ -37,6 +37,10 @@ See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 - Custom search fields for annotations and fully custom search logic
 - Internationalized error messages with translation catalogs for 11 locales
 - Usable outside the Django admin, including a standalone JavaScript completion widget
+- **Multi-line queries** — `Shift+Enter` inserts a newline (`Enter` still submits)
+- **Pretty-print / formatting** — re-indent a query via `format_query()` or the `…/format/` endpoint
+- **Per-branch record counts** — see how many rows each sub-expression matches via `explain()` or the `…/explain/` endpoint
+- **Syntax highlighting** — a tokenizer (`DjangoQLHighlight.tokenize`) plus a lightweight, restyleable overlay; no palette or editor imposed
 
 ## Installation
 
@@ -76,8 +80,32 @@ The site is built with MkDocs from the [`docs/`](docs/) directory. Key pages:
 - [Schema & custom fields](https://iplweb.github.io/djangoql-iplweb/schema/) — restrict searchable models/fields, custom search fields
 - [Derived fields](https://iplweb.github.io/djangoql-iplweb/derived-fields/) — date/time parts, relation aggregates, custom search logic
 - [Outside the admin](https://iplweb.github.io/djangoql-iplweb/queryset/) — `DjangoQLQuerySet` and `apply_search()`
+- [Multi-line queries](https://iplweb.github.io/djangoql-iplweb/multiline-queries/) — `Shift+Enter` newline support
+- [Pretty-print / formatting](https://iplweb.github.io/djangoql-iplweb/pretty-print/) — `format_query()` and the format endpoint
+- [Query breakdown (counts)](https://iplweb.github.io/djangoql-iplweb/query-breakdown/) — per-branch record counts with `explain()`
+- [Syntax highlighting](https://iplweb.github.io/djangoql-iplweb/syntax-highlighting/) — tokenizer + overlay, bring-your-own colours/editor
 - [Completion widget](https://iplweb.github.io/djangoql-iplweb/completion-widget/) — standalone JS widget outside the admin
+- [Example project](https://iplweb.github.io/djangoql-iplweb/example-project/) — runnable demo of all of the above
 - [Internationalization](https://iplweb.github.io/djangoql-iplweb/i18n/) — i18n support and supplied locales
+
+## Example project
+
+A runnable demo of all the features above (on a richly related dataset) lives in
+[`example_project/`](example_project/). See its
+[README](example_project/README.md) for details. Quick start:
+
+``` shell
+cd example_project
+uv run python manage.py migrate
+uv run python manage.py seed_demo          # lots of related demo data
+uv run python manage.py createsuperuser    # optional, for the admin
+uv run python manage.py runserver
+```
+
+Then open <http://127.0.0.1:8000/> (overlay demo — multi-line, highlighting,
+Format, Explain counts), <http://127.0.0.1:8000/codemirror/> (CodeMirror 6
+driven by the tokenizer), or <http://127.0.0.1:8000/admin/> (admin with
+completion + multi-line + the highlight overlay).
 
 ## Supported by
 
