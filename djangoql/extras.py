@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from urllib.parse import urlsplit
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import Avg, Count, Max, Min, OuterRef, Q, Subquery, Sum
 from django.db.models import FloatField as ORMFloatField
@@ -34,6 +35,8 @@ class DatePartField(IntField):
     needed: get_lookup joins ``path + [name]`` with ``__``.
     """
 
+    suggested = False  # hidden from autocomplete; surfaced via error hint
+
     def __init__(self, base_field, part, model=None, nullable=False):
         self.base_field = base_field
         self.part = part
@@ -46,6 +49,8 @@ class DatePartField(IntField):
 
 class DateExtractField(DateField):
     """``<datetime>__date`` -> compares to a date in YYYY-MM-DD format."""
+
+    suggested = False  # hidden from autocomplete; surfaced via error hint
 
     def __init__(self, base_field, model=None, nullable=False):
         self.base_field = base_field
@@ -62,6 +67,7 @@ class TimeExtractField(DjangoQLField):
     type = 'time'
     value_types = [str]
     value_types_description = _('times in "HH:MM[:SS]" format')
+    suggested = False  # hidden from autocomplete; surfaced via error hint
 
     def __init__(self, base_field, model=None, nullable=False):
         self.base_field = base_field
@@ -135,12 +141,20 @@ class AggregateField(IntField):
         source_field=None,
         # None preserves the subclass-level `nullable` class attr
         nullable=None,
-        suggested=True,
+        # Derived fields are hidden from autocomplete by default. Relation
+        # count keeps a flat name and is surfaced via the error hint; numeric
+        # aggregates are synthesized on demand and never serialized.
+        suggested=False,
+        # When True the field is addressed via dot syntax (e.g.
+        # ``book.rating__sum``), so the trailing path element is the relation
+        # itself and subquery correlation must use ``path[:-1]``.
+        relation_hop_in_path=False,
     ):
         self.relation_name = relation_name
         self.related_model = related_model
         self.owner_lookup = owner_lookup
         self.source_field = source_field
+        self.relation_hop_in_path = relation_hop_in_path
         super().__init__(
             model=model,
             name=name,
@@ -161,7 +175,14 @@ class AggregateField(IntField):
         return self._subquery(path)
 
     def _subquery(self, path):
-        outer = LOOKUP_SEP.join(list(path) + ['pk'])
+        # For dot-addressed aggregates the trailing path element is the
+        # relation itself (already encoded in owner_lookup), so correlate on
+        # the owning model reached via path[:-1]. Flat fields correlate on the
+        # full path.
+        correlation = (
+            list(path[:-1]) if self.relation_hop_in_path else list(path)
+        )
+        outer = LOOKUP_SEP.join(correlation + ['pk'])
         rel_qs = (
             self.related_model._base_manager.order_by()
             .filter(**{self.owner_lookup: OuterRef(outer)})
@@ -263,6 +284,10 @@ class AggregateSchemaMixin:
             if owner is None:  # hidden/unusable reverse -> skip
                 continue
             rel = f.name
+            # Only the flat relation count is registered as a real (hidden)
+            # field. Numeric aggregates use dot syntax (e.g. book.rating__sum)
+            # and are synthesized on demand in resolve_unknown(), so they never
+            # bloat the field list or autocomplete.
             fields.append(
                 CountField(
                     model=model,
@@ -272,26 +297,6 @@ class AggregateSchemaMixin:
                     name='%s__count' % rel,
                 )
             )
-            for nf in related._meta.get_fields():
-                if (
-                    isinstance(nf, self.NUMERIC_FIELDS)
-                    and not nf.is_relation
-                    and not getattr(nf, 'primary_key', False)
-                    and getattr(nf, 'editable', True)  # skip GFK/internal cols
-                ):
-                    for agg_name, agg_cls in self.AGGREGATE_FIELDS:
-                        fields.append(
-                            agg_cls(
-                                model=model,
-                                relation_name=rel,
-                                related_model=related,
-                                owner_lookup=owner,
-                                source_field=nf.name,
-                                name='{}__{}__{}'.format(
-                                    rel, nf.name, agg_name
-                                ),
-                            )
-                        )
         return fields
 
     @staticmethod
@@ -313,6 +318,111 @@ class AggregateSchemaMixin:
         ):
             return None
         return _owner_lookup(f)
+
+    def resolve_unknown(self, model_cls, prev_relation, name_part):
+        """
+        Synthesize a numeric aggregate field for dot syntax such as
+        ``book.rating__sum`` (``prev_relation`` is the ``book`` relation just
+        traversed, ``name_part`` is ``rating__sum``). Falls back to super() for
+        anything we don't recognize.
+        """
+        field = self._synthesize_aggregate(prev_relation, name_part)
+        if field is not None:
+            return field
+        return super().resolve_unknown(model_cls, prev_relation, name_part)
+
+    def _synthesize_aggregate(self, prev_relation, name_part):
+        if prev_relation is None or LOOKUP_SEP not in name_part:
+            return None
+        source_field, _sep, agg_name = name_part.rpartition(LOOKUP_SEP)
+        agg_cls = dict(self.AGGREGATE_FIELDS).get(agg_name)
+        if agg_cls is None or not source_field:
+            return None
+        owner_model = prev_relation.model
+        related_model = prev_relation.related_model
+        try:
+            rel_f = owner_model._meta.get_field(prev_relation.name)
+        except FieldDoesNotExist:
+            return None
+        if not (
+            rel_f.is_relation and (rel_f.one_to_many or rel_f.many_to_many)
+        ):
+            return None
+        owner_lookup = self._aggregate_owner_lookup(rel_f)
+        if owner_lookup is None:
+            return None
+        if not self._is_aggregatable_numeric(related_model, source_field):
+            return None
+        return agg_cls(
+            model=related_model,
+            relation_name=prev_relation.name,
+            related_model=related_model,
+            owner_lookup=owner_lookup,
+            source_field=source_field,
+            name=name_part,
+            relation_hop_in_path=True,
+        )
+
+    def _is_aggregatable_numeric(self, model, field_name):
+        try:
+            nf = model._meta.get_field(field_name)
+        except FieldDoesNotExist:
+            return False
+        return (
+            isinstance(nf, self.NUMERIC_FIELDS)
+            and not nf.is_relation
+            and not getattr(nf, 'primary_key', False)
+            and getattr(nf, 'editable', True)  # skip GFK/internal cols
+        )
+
+    def _first_numeric_field(self, model):
+        """First aggregatable numeric field name (prefer one without choices,
+        for a cleaner example), or None."""
+        fallback = None
+        for nf in model._meta.get_fields():
+            if (
+                isinstance(nf, self.NUMERIC_FIELDS)
+                and not nf.is_relation
+                and not getattr(nf, 'primary_key', False)
+                and getattr(nf, 'editable', True)
+            ):
+                if not getattr(nf, 'choices', None):
+                    return nf.name
+                if fallback is None:
+                    fallback = nf.name
+        return fallback
+
+    def _aggregate_hint_examples(self, model_cls):
+        first_rel = None
+        for f in model_cls._meta.get_fields():
+            if not (f.is_relation and (f.one_to_many or f.many_to_many)):
+                continue
+            if (
+                f.related_model is None
+                or self._aggregate_owner_lookup(f) is None
+            ):
+                continue
+            if first_rel is None:
+                first_rel = f.name
+            numeric = self._first_numeric_field(f.related_model)
+            if numeric:
+                return ['%s__count' % f.name, '%s.%s__sum' % (f.name, numeric)]
+        if first_rel is not None:
+            return ['%s__count' % first_rel]
+        return []
+
+    def unknown_field_hint(self, model_cls):
+        hint = super().unknown_field_hint(model_cls)
+        examples = self._aggregate_hint_examples(model_cls)
+        if examples:
+            sentence = _(
+                'Relation aggregates are hidden from suggestions: use '
+                '<relation>__count and '
+                '<relation>.<numeric_field>__{{sum,avg,min,max}} — e.g. '
+                '{examples}.'
+            ).format(examples=', '.join(examples))
+            hint = ('%s %s' % (hint, sentence)).strip()
+        return hint
 
 
 class DatePartsSchemaMixin:
@@ -359,6 +469,25 @@ class DatePartsSchemaMixin:
                     for p in self.TIME_PARTS
                 ]
         return fields
+
+    def _date_hint_example(self, model_cls):
+        for f in model_cls._meta.get_fields():
+            if isinstance(f, models.TimeField):
+                return '%s__hour' % f.name
+            if isinstance(f, models.DateField):  # also matches DateTimeField
+                return '%s__year' % f.name
+        return None
+
+    def unknown_field_hint(self, model_cls):
+        hint = super().unknown_field_hint(model_cls)
+        example = self._date_hint_example(model_cls)
+        if example:
+            sentence = _(
+                'Date/time parts are hidden too: use '
+                '<field>__{{year,month,day,hour,...}} — e.g. {example}.'
+            ).format(example=example)
+            hint = ('%s %s' % (hint, sentence)).strip()
+        return hint
 
 
 class AutocompleteField(StrField):
