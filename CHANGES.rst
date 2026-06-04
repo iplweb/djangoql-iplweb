@@ -1,6 +1,17 @@
 Unreleased
 ----------
 
+* Add an **empty-result breakdown**: when a valid DjangoQL query returns zero
+  rows, explain *where in the query the data runs out*. The new
+  ``djangoql.breakdown.explain_empty(queryset, search, schema=None, *,
+  max_nodes=50)`` helper walks the validated AST for an arbitrary boolean
+  structure (``and`` / ``or`` / parentheses), runs one ``count()`` per
+  sub-expression against the base queryset, and returns a tree of
+  ``{text, count, role, children}`` nodes flagging the killer ``AND``
+  (``killer_and``) and dead ``OR`` branches (``dead_or_branch``). The admin
+  surfaces it automatically on empty results (lazy; disable with
+  ``djangoql_explain_empty = False``, tune the cost guard with
+  ``djangoql_explain_empty_max_nodes``).
 * Add pluggable **autocomplete value fields** in ``djangoql.extras``
   (``AutocompleteField`` + ``AutocompleteSchemaMixin``). A field's value
   suggestions can come from an arbitrary source — most usefully an existing
