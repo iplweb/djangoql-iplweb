@@ -50,15 +50,14 @@ jobs:
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
-      - name: Install gettext (required by django compilemessages)
-        run: sudo apt-get update && sudo apt-get install -y gettext
       - name: Install dependencies (project + Django ${{ matrix.django-version }})
         run: |
           uv sync --all-extras
           uv pip install "django~=${{ matrix.django-version }}.0"
-      - name: Compile translation catalogs
-        working-directory: djangoql
-        run: uv run --no-sync django-admin compilemessages
+      - name: Compile translation catalogs (Babel)
+        # .mo files are not tracked in git; compile them with the same Babel
+        # function the build backend uses (no system gettext needed).
+        run: uv run --no-sync python -c "from _translations import compile_catalogs; compile_catalogs()"
       - name: Run tests
         # --no-sync so the matrix-pinned Django above is not reverted by uv.
         run: uv run --no-sync pytest
@@ -71,15 +70,14 @@ jobs:
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
       - name: Set up Python 3.12
         run: uv python install 3.12
-      - name: Install gettext (required by django compilemessages)
-        run: sudo apt-get update && sudo apt-get install -y gettext
       - name: Install dependencies (project + Django 5.2)
         run: |
           uv sync --all-extras
           uv pip install "django~=5.2.0"
-      - name: Compile translation catalogs
-        working-directory: djangoql
-        run: uv run --no-sync django-admin compilemessages
+      - name: Compile translation catalogs (Babel)
+        # .mo files are not tracked in git; compile them with the same Babel
+        # function the build backend uses (no system gettext needed).
+        run: uv run --no-sync python -c "from _translations import compile_catalogs; compile_catalogs()"
       - name: Run tests (PostgreSQL via testcontainers)
         # --no-sync so the pinned Django above is not reverted by uv.
         # Testcontainers manages the postgres:16-alpine container itself;
