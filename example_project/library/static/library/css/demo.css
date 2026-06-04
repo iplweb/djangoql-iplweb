@@ -14,6 +14,18 @@
   --danger: #ff5d73;
   --amber: #ffb454;
   --radius: 14px;
+
+  /* DjangoQL token palette — shared by the query-box overlay and the
+     syntax-highlighted "explain counts" labels. */
+  --dql-name: #8be9fd;
+  --dql-operator: #ff79c6;
+  --dql-logical: #ffb454;
+  --dql-string: #50fa7b;
+  --dql-number: #bd93f9;
+  --dql-bool: #bd93f9;
+  --dql-none: #bd93f9;
+  --dql-paren: #9aa0c8;
+  --dql-comma: #9aa0c8;
 }
 
 * { box-sizing: border-box; }
@@ -154,18 +166,10 @@ footer {
 
 /* ---- Recolour the DjangoQL overlay via its CSS variables -------------- */
 .dql-highlight-backdrop {
-  /* Holds the dark box background now that #q is transparent. */
+  /* Holds the dark box background now that #q is transparent. The token
+     palette is inherited from :root; only input-specific bits live here. */
   background: #0b0e22;
   border-radius: 12px;
-  --dql-name: #8be9fd;
-  --dql-operator: #ff79c6;
-  --dql-logical: #ffb454;
-  --dql-string: #50fa7b;
-  --dql-number: #bd93f9;
-  --dql-bool: #bd93f9;
-  --dql-none: #bd93f9;
-  --dql-paren: #9aa0c8;
-  --dql-comma: #9aa0c8;
   --dql-caret: #ffffff;
   --dql-error-mark: #ff8a9b;
   --dql-error-mark-bg: rgba(255, 93, 115, 0.42);

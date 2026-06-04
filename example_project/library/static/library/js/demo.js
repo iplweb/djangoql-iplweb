@@ -169,7 +169,13 @@
     li.title = node.count + ' row(s) match this sub-expression';
     var label = document.createElement('span');
     label.className = 'node-label';
-    label.textContent = node.text;
+    // Syntax-highlight the sub-expression with the same tokenizer/palette as the
+    // query box. renderHtml is XSS-safe (it HTML-escapes every token value).
+    if (window.DjangoQLHighlight) {
+      label.innerHTML = DjangoQLHighlight.renderHtml(node.text);
+    } else {
+      label.textContent = node.text;
+    }
     var count = document.createElement('span');
     count.className = 'node-count';
     count.textContent = node.count;
