@@ -29,9 +29,18 @@ This requires Docker to be running.  The first run will pull the
 image.  The `testcontainers[postgres]` and `psycopg[binary]` packages are
 included in the `dev` extra and are installed by `uv sync --all-extras`.
 
-The suite runs against the bundled `test_project/`. To check translation
-catalogs locally, run `django-admin compilemessages` from the `djangoql/`
-directory first (requires the system `gettext` package).
+The suite runs against the bundled `test_project/`. The compiled `.mo`
+catalogs are **not** tracked in git — they are generated from the source
+`.po` files at build time. To compile them locally (e.g. before running the
+tests), run, from the repo root:
+
+```shell
+uv run python -c "from _translations import compile_catalogs; compile_catalogs()"
+```
+
+This uses Babel (a pure-Python `dev` dependency) — no system `gettext` /
+`msgfmt` is required. It is the same function the build backend
+(`_build_meta.py`) runs when building the wheel/sdist.
 
 ## Linting and formatting
 

@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools>=77.0"]
-build-backend = "setuptools.build_meta"
+# Babel compiles the gettext .mo catalogs at build time (see _build_meta.py /
+# _translations.py); no GNU gettext / msgfmt binary is needed.
+requires = ["setuptools>=77.0", "babel"]
+build-backend = "_build_meta"
+backend-path = ["."]
 
 [project]
 name = "djangoql-iplweb"
@@ -38,6 +41,9 @@ dev = [
     "bumpver",
     "pytest",
     "pytest-django",
+    # Babel compiles .po -> .mo for the test run (the .mo files are not in
+    # git); CI calls _translations.compile_catalogs() before pytest.
+    "babel",
     # Django is a peer dependency (not in [project.dependencies]); pin a
     # supported version here so the test suite has something to run against.
     # CI overrides this per matrix entry.

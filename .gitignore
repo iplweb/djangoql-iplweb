@@ -10,6 +10,10 @@ dist
 djangoql.egg-info
 site/
 
+# Compiled gettext catalogs: generated from .po at build time (Babel), not
+# tracked. See _translations.py / _build_meta.py.
+*.mo
+
 .venv/
 uv.lock
 
