@@ -7,7 +7,7 @@ from django.db import DataError, NotSupportedError
 from django.forms import Media
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from django.urls import re_path, reverse
+from django.urls import path, reverse
 from django.views.generic import TemplateView
 
 from .breakdown import explain_empty
@@ -23,10 +23,7 @@ DJANGOQL_SEARCH_MARKER = 'q-l'
 
 class DjangoQLChangeList(ChangeList):
     def get_filters_params(self, *args, **kwargs):
-        params = super().get_filters_params(
-            *args,
-            **kwargs
-        )
+        params = super().get_filters_params(*args, **kwargs)
         if DJANGOQL_SEARCH_MARKER in params:
             del params[DJANGOQL_SEARCH_MARKER]
         return params
@@ -60,8 +57,8 @@ class DjangoQLSearchMixin:
 
     def get_search_results(self, request, queryset, search_term):
         if (
-            self.search_mode_toggle_enabled() and
-            not self.djangoql_search_enabled(request)
+            self.search_mode_toggle_enabled()
+            and not self.djangoql_search_enabled(request)
         ):
             return super().get_search_results(
                 request=request,
@@ -146,12 +143,15 @@ class DjangoQLSearchMixin:
             msg = exception.messages[0]
         else:
             msg = str(exception)
-        return render_to_string('djangoql/error_message.html', context={
-            'error_message': msg,
-            'djangoql_syntax_help_url': reverse(
-                '%s:djangoql_syntax_help' % self.admin_site.name,
-            ),
-        })
+        return render_to_string(
+            'djangoql/error_message.html',
+            context={
+                'error_message': msg,
+                'djangoql_syntax_help_url': reverse(
+                    '%s:djangoql_syntax_help' % self.admin_site.name,
+                ),
+            },
+        )
 
     @property
     def media(self):
@@ -166,10 +166,12 @@ class DjangoQLSearchMixin:
                     js.append('djangoql/js/completion_admin_toggle_off.js')
             js.append('djangoql/js/completion_admin.js')
             media += Media(
-                css={'': (
-                    'djangoql/css/completion.css',
-                    'djangoql/css/completion_admin.css',
-                )},
+                css={
+                    '': (
+                        'djangoql/css/completion.css',
+                        'djangoql/css/completion_admin.css',
+                    )
+                },
                 js=js,
             )
         return media
@@ -178,38 +180,42 @@ class DjangoQLSearchMixin:
         custom_urls = []
         if self.djangoql_completion:
             custom_urls += [
-                re_path(
-                    r'^introspect/$',
+                path(
+                    'introspect/',
                     self.admin_site.admin_view(self.introspect),
-                    name='%s_%s_djangoql_introspect' % (
+                    name='{}_{}_djangoql_introspect'.format(
                         self.model._meta.app_label,
                         self.model._meta.model_name,
                     ),
                 ),
-                re_path(
-                    r'^suggestions/$',
+                path(
+                    'suggestions/',
                     self.admin_site.admin_view(self.suggestions),
-                    name='%s_%s_djangoql_suggestions' % (
+                    name='{}_{}_djangoql_suggestions'.format(
                         self.model._meta.app_label,
                         self.model._meta.model_name,
                     ),
                 ),
-                re_path(
-                    r'^djangoql-syntax/$',
-                    self.admin_site.admin_view(TemplateView.as_view(
-                        template_name=self.djangoql_syntax_help_template,
-                    )),
+                path(
+                    'djangoql-syntax/',
+                    self.admin_site.admin_view(
+                        TemplateView.as_view(
+                            template_name=self.djangoql_syntax_help_template,
+                        )
+                    ),
                     name='djangoql_syntax_help',
                 ),
             ]
         return custom_urls + super().get_urls()
 
     def introspect(self, request):
-        suggestions_url = reverse('%s:%s_%s_djangoql_suggestions' % (
-            self.admin_site.name,
-            self.model._meta.app_label,
-            self.model._meta.model_name,
-        ))
+        suggestions_url = reverse(
+            '{}:{}_{}_djangoql_suggestions'.format(
+                self.admin_site.name,
+                self.model._meta.app_label,
+                self.model._meta.model_name,
+            )
+        )
         serializer = SuggestionsAPISerializer(suggestions_url)
         response = serializer.serialize(self.djangoql_schema(self.model))
         return HttpResponse(
