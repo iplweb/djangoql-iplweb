@@ -163,8 +163,54 @@ filters by `request.user` keeps doing so when called through the autocomplete fi
 | `search_fields` | `[]` | fields on the related model for the free-text fallback |
 | `label` | `str` | callable `obj -> str` for the display label |
 | `id_of` | `obj.pk` | callable `obj -> id` for the embedded id |
+| `lookup_name` | `None` | real model field to filter on (default: the field's own name); lets a picker live under a second name like `<fk>__rel` |
 | `search_param` | `'q'` | GET parameter set on the bound request for the URL provider |
 | `limit` | `50` | maximum number of suggestions returned |
+
+## Exposing a FK as both a navigable relation and a value picker
+
+By default a FK is a **navigable relation** — you traverse into it
+(`author.last_name`, `author.country.code`). The picker above instead exposes it
+as a **value field** under the *same* name, which removes traversal. To keep
+**both**, expose the picker under a *second* name and point it back at the real
+FK with `lookup_name`. The recommended convention is `<fk>__rel` (double
+underscore, consistent with the derived-field family `__count` / `__sum` / …):
+
+```python
+from django.contrib.auth.models import User
+from djangoql.extras import AutocompleteSchemaMixin
+from djangoql.schema import DjangoQLSchema
+
+from .models import Book
+
+
+class BookSchema(AutocompleteSchemaMixin, DjangoQLSchema):
+    include = (Book, User)
+    autocomplete = {
+        Book: {
+            # picker; `author` itself stays a navigable relation
+            'author__rel': {
+                'lookup_name': 'author',           # filters the real FK
+                'url': 'user-autocomplete',
+                'search_fields': ['username'],
+            },
+        },
+    }
+
+    def get_fields(self, model):
+        # `author__rel` is synthetic (not a real model field), so it must be
+        # added explicitly or it won't be introspected / suggested.
+        fields = list(super().get_fields(model))
+        if model is Book:
+            fields.append('author__rel')
+        return fields
+```
+
+Now both work side by side:
+
+- `author.username = "kowalski"` — traversal into the related model (unchanged);
+- `author__rel = "Jan Kowalski [42]"` — picker, filters `author_id = 42`
+  (with the usual `icontains` free-text fallback over `search_fields`).
 
 ## Limitations
 
