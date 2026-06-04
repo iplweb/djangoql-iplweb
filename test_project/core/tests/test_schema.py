@@ -267,3 +267,57 @@ class DateFieldTest(TestCase):
         # A well-formed string that isn't a real date must raise, not crash.
         with self.assertRaises(DjangoQLSchemaError):
             field.validate('not-a-date')
+
+
+class UnknownFieldSuggestionTest(TestCase):
+    """The "Unknown field" error suggests close matches for likely typos."""
+
+    def _error(self, schema, model, query):
+        ast = DjangoQLParser().parse(query)
+        with self.assertRaises(DjangoQLSchemaError) as ctx:
+            schema(model).validate(ast)
+        return str(ctx.exception)
+
+    def test_close_typo_suggests_field_and_omits_full_list(self):
+        msg = self._error(DjangoQLSchema, Book, 'autho = 1')
+        self.assertIn('Did you mean', msg)
+        self.assertIn('author', msg)
+        # With a good guess, the long fallback list is dropped.
+        self.assertNotIn('Possible choices', msg)
+
+    def test_gibberish_falls_back_to_full_list(self):
+        msg = self._error(DjangoQLSchema, Book, 'aoijdsofiajs = 1')
+        self.assertIn('Possible choices are', msg)
+        self.assertNotIn('Did you mean', msg)
+
+    def test_suggestion_is_case_insensitive(self):
+        msg = self._error(DjangoQLSchema, Book, 'Authr = 1')
+        self.assertIn('Did you mean', msg)
+        self.assertIn('author', msg)
+
+    def test_pool_includes_hidden_derived_fields(self):
+        from djangoql.extras import ExtrasSchema
+
+        # book__count is a hidden (suggested=False) reverse-relation aggregate,
+        # so it is not in the fallback list but is still matchable.
+        msg = self._error(ExtrasSchema, User, 'book__coun = 1')
+        self.assertIn('Did you mean', msg)
+        self.assertIn('book__count', msg)
+
+    def test_hint_still_appended_in_did_you_mean_branch(self):
+        class HintSchema(DjangoQLSchema):
+            def unknown_field_hint(self, model_cls):
+                return 'See the docs'
+
+        msg = self._error(HintSchema, Book, 'autho = 1')
+        self.assertIn('Did you mean', msg)
+        self.assertIn('See the docs', msg)
+
+    def test_suggest_field_names_is_overridable(self):
+        class NoSuggestSchema(DjangoQLSchema):
+            def suggest_field_names(self, name_part, candidates):
+                return []
+
+        msg = self._error(NoSuggestSchema, Book, 'autho = 1')
+        self.assertNotIn('Did you mean', msg)
+        self.assertIn('Possible choices', msg)

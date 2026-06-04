@@ -210,3 +210,41 @@ class UserQLSchema(DjangoQLSchema):
 class CustomUserAdmin(DjangoQLSearchMixin, UserAdmin):
     djangoql_schema = UserQLSchema
 ```
+
+## "Did you mean" suggestions for unknown fields
+
+When a query references a field that doesn't exist, DjangoQL tries to help. If
+the name looks like a typo of a real field, the error points at the likely
+match instead of dumping the whole field list:
+
+```
+Unknown field: autho. Did you mean: author?
+```
+
+If the name doesn't resemble anything (e.g. `aoijdsofiajs`), DjangoQL falls
+back to listing the available fields as before:
+
+```
+Unknown field: aoijdsofiajs. Possible choices are: author, genre, name, ...
+```
+
+Matching is case-insensitive and considers **every** field name — including
+hidden derived fields — so a typo like `book__coun` can suggest the hidden
+`book__count` aggregate.
+
+You can tune this behavior by overriding `suggest_field_names()` on your schema.
+It receives the mistyped name and the candidate field names, and returns the
+names to offer (return an empty list to disable suggestions entirely):
+
+``` python
+class MySchema(DjangoQLSchema):
+    def suggest_field_names(self, name_part, candidates):
+        import difflib
+        # stricter cutoff, only ever suggest one field
+        return difflib.get_close_matches(
+            name_part.lower(),
+            [c.lower() for c in candidates],
+            n=1,
+            cutoff=0.8,
+        )
+```

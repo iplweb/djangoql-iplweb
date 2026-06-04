@@ -1,3 +1,4 @@
+import difflib
 import inspect
 import warnings
 from collections import OrderedDict, deque
@@ -533,20 +534,54 @@ class DjangoQLSchema:
         """
         return ''
 
-    def _unknown_field_message(self, model, model_cls, name_part):
-        # Only suggest fields that are actually offered in autocomplete; hidden
-        # derived fields (suggested=False) and synthesized aggregates are
-        # surfaced via unknown_field_hint() instead of bloating this list.
-        choices = ', '.join(
-            sorted(n for n, f in self.models[model].items() if f.suggested),
+    def suggest_field_names(self, name_part, candidates):
+        """
+        Return up to a few field names from ``candidates`` that look like a typo
+        of ``name_part``, best match first. Used to turn the "Unknown field"
+        error into a "Did you mean ...?" hint.
+
+        Matching is case-insensitive and uses difflib's similarity ratio; the
+        0.6 cutoff distinguishes a near-miss (``author`` vs ``authors``) from an
+        unrelated string. Override to tune the cutoff/count or plug in another
+        algorithm.
+        """
+        lowered = {c.lower(): c for c in candidates}
+        hits = difflib.get_close_matches(
+            name_part.lower(),
+            list(lowered),
+            n=3,
+            cutoff=0.6,
         )
-        message = _(
-            'Unknown field: {field}. Possible choices are: {choices}'
-        ).format(field=name_part, choices=choices)
+        return [lowered[h] for h in hits]
+
+    def _unknown_field_message(self, model, model_cls, name_part):
+        # If the name looks like a typo of a real field, point at the likely
+        # match instead of dumping the whole list. The candidate pool is every
+        # field name (including hidden derived fields), so e.g. "book__coun"
+        # can suggest the hidden "book__count".
+        suggestions = self.suggest_field_names(
+            name_part,
+            self.models[model].keys(),
+        )
+        if suggestions:
+            message = _(
+                'Unknown field: {field}. Did you mean: {suggestions}?'
+            ).format(field=name_part, suggestions=', '.join(suggestions))
+        else:
+            # No close match: fall back to listing the fields actually offered
+            # in autocomplete; hidden derived fields (suggested=False) and
+            # synthesized aggregates are surfaced via unknown_field_hint()
+            # instead of bloating this list.
+            choices = ', '.join(
+                sorted(n for n, f in self.models[model].items() if f.suggested),
+            )
+            message = _(
+                'Unknown field: {field}. Possible choices are: {choices}'
+            ).format(field=name_part, choices=choices)
         hint = self.unknown_field_hint(model_cls)
         if hint:
-            # Period separates the choices list from the hint sentence so they
-            # don't run together ("...username. Relation aggregates...").
+            # Period separates the message from the hint sentence so they don't
+            # run together ("...username. Relation aggregates...").
             message = '%s. %s' % (message, hint)
         return message
 
