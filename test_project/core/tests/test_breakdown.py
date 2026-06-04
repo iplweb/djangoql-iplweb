@@ -3,7 +3,7 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from djangoql.breakdown import explain_empty
+from djangoql.breakdown import explain, explain_empty
 
 from ..models import Book
 
@@ -49,6 +49,48 @@ class LazyTriggerTest(BreakdownBaseTest):
         result = explain_empty(Book.objects.all(), 'genre = 3')
         self.assertIsNotNone(result)
         self.assertEqual(result['count'], 0)
+
+
+class ExplainAlwaysTest(BreakdownBaseTest):
+    """explain() always returns the per-node count tree (the on-demand
+    breakdown), unlike explain_empty() which only fires on zero rows."""
+
+    def test_non_empty_result_still_returns_tree(self):
+        # genre = 1 -> 2 rows. explain_empty would return None here; explain
+        # returns the tree with the real count.
+        self.assertIsNone(explain_empty(Book.objects.all(), 'genre = 1'))
+        tree = explain(Book.objects.all(), 'genre = 1')
+        self.assertIsNotNone(tree)
+        self.assertEqual(tree['count'], 2)
+        self.assertEqual(tree['role'], 'leaf')
+
+    def test_empty_search_returns_none(self):
+        self.assertIsNone(explain(Book.objects.all(), ''))
+        self.assertIsNone(explain(Book.objects.all(), '   '))
+
+    def test_per_branch_counts(self):
+        # genre = 1 (2 rows) and rating = 5 (2 rows) -> intersection 2 rows.
+        tree = explain(Book.objects.all(), 'genre = 1 and rating = 5')
+        self.assertEqual(tree['count'], 2)
+        child_counts = sorted(c['count'] for c in tree['children'])
+        self.assertEqual(child_counts, [2, 2])
+
+    def test_zero_branch_flagged_in_non_empty_or(self):
+        # genre = 1 (2 rows) or genre = 3 (0 rows) -> overall 2 rows, but the
+        # dead branch is still surfaced.
+        tree = explain(Book.objects.all(), 'genre = 1 or genre = 3')
+        self.assertEqual(tree['count'], 2)
+        dead = _find(tree, 'dead_or_branch')
+        self.assertEqual(len(dead), 1)
+        self.assertEqual(dead[0]['text'], 'genre = 3')
+
+    def test_max_nodes_truncates(self):
+        tree = explain(
+            Book.objects.all(),
+            'genre = 1 and rating = 5 and rating = 5',
+            max_nodes=1,
+        )
+        self.assertTrue(tree.get('truncated'))
 
 
 class FlatAndChainTest(BreakdownBaseTest):

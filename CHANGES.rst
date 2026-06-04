@@ -1,6 +1,15 @@
 Unreleased
 ----------
 
+* **Query breakdown (record counts per branch):** new
+  ``djangoql.breakdown.explain(queryset, search, …)`` always returns the
+  per-node count tree (``{text, count, role, children}``, one ``count()`` per
+  node, guarded by ``max_nodes``), for any query — the on-demand sibling of the
+  zero-rows ``explain_empty`` (now a thin lazy wrapper sharing the same
+  helpers). ``DjangoQLSearchMixin`` exposes an ``…/explain/`` JSON endpoint
+  (``q`` → ``{tree}`` / ``{error}``+400). It is caller-triggered by design (not
+  run per search); wiring/rendering it is the integrator's decision. New docs
+  page "Query breakdown (counts)".
 * **Pretty-print / formatting:** new ``djangoql.formatter`` module with
   ``format_query(query, indent=2)`` — parses a query and re-renders it as
   indented, multi-line text (round-trip safe and idempotent) — and

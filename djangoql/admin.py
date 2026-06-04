@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.views.generic import TemplateView
 
-from .breakdown import explain_empty
+from .breakdown import explain, explain_empty
 from .exceptions import DjangoQLError
 from .formatter import format_query
 from .queryset import apply_search
@@ -210,6 +210,14 @@ class DjangoQLSearchMixin:
                     ),
                 ),
                 path(
+                    'explain/',
+                    self.admin_site.admin_view(self.djangoql_explain),
+                    name='{}_{}_djangoql_explain'.format(
+                        self.model._meta.app_label,
+                        self.model._meta.model_name,
+                    ),
+                ),
+                path(
                     'djangoql-syntax/',
                     self.admin_site.admin_view(
                         TemplateView.as_view(
@@ -237,6 +245,33 @@ class DjangoQLSearchMixin:
         except DjangoQLError as e:
             return JsonResponse({'error': str(e)}, status=400)
         return JsonResponse({'formatted': formatted})
+
+    def djangoql_explain(self, request):
+        """Return a per-node count breakdown of a query as JSON.
+
+        On-demand primitive backing a "show counts / explain" action: the
+        front-end posts the raw query (``q``) and gets back ``{"tree": …}`` —
+        a tree of ``{text, count, role, children}`` with one ``count()`` per
+        node. ``tree`` is ``null`` for an empty query; an invalid query yields
+        ``{"error": …}`` with HTTP 400.
+
+        This runs one ``count()`` per node, so it is deliberately *not* invoked
+        automatically per search — the front-end calls it when the user asks.
+        How (or whether) to surface it in the UI is the integrator's decision.
+        """
+        query = request.POST.get('q', request.GET.get('q', ''))
+        if not query.strip():
+            return JsonResponse({'tree': None})
+        try:
+            tree = explain(
+                self.get_queryset(request),
+                query,
+                self.djangoql_schema,
+                max_nodes=self.djangoql_explain_empty_max_nodes,
+            )
+        except (DjangoQLError, ValueError, FieldError, ValidationError) as e:
+            return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'tree': tree})
 
     def introspect(self, request):
         suggestions_url = reverse(

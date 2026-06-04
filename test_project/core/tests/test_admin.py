@@ -74,6 +74,29 @@ class DjangoQLAdminTest(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertIn('error', json.loads(response.content.decode('utf8')))
 
+    def test_explain_endpoint(self):
+        url = reverse('admin:core_book_djangoql_explain')
+        # unauthorized request should be redirected
+        self.assertEqual(302, self.client.get(url).status_code)
+        self.assertTrue(self.client.login(**self.credentials))
+        data = self.get_json(url, data={'q': 'genre = 1'})
+        self.assertIn('tree', data)
+        self.assertEqual('leaf', data['tree']['role'])
+        self.assertIn('count', data['tree'])
+
+    def test_explain_endpoint_empty_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_explain')
+        data = self.get_json(url, data={'q': ''})
+        self.assertIsNone(data['tree'])
+
+    def test_explain_endpoint_invalid_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_explain')
+        response = self.client.get(url, {'q': 'nonexistent_field = 1'})
+        self.assertEqual(400, response.status_code)
+        self.assertIn('error', json.loads(response.content.decode('utf8')))
+
     def test_introspection_suggestion_api_url(self):
         self.assertTrue(self.client.login(**self.credentials))
         for app in ['admin', 'zaibatsu']:
