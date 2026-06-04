@@ -533,6 +533,7 @@ class AutocompleteField(StrField):
         view=None,
         label=None,
         id_of=None,
+        lookup_name=None,
         search_param='q',
         limit=50,
     ):
@@ -550,6 +551,7 @@ class AutocompleteField(StrField):
         self.view = view
         self.label = label
         self.id_of = id_of
+        self._lookup_name = lookup_name
         self.search_param = search_param
         self.limit = limit
         self.request = None
@@ -653,6 +655,16 @@ class AutocompleteField(StrField):
         return request
 
     # -- lookup / filtering ------------------------------------------------
+
+    def get_lookup_name(self):
+        """Return the ORM lookup name used for filtering.
+
+        When ``lookup_name`` is supplied (e.g. ``'author'`` for a picker
+        registered under the alternate name ``'author__rel'``), it is used
+        instead of ``self.name``, redirecting the filter to the real FK
+        column. Defaults to ``self.name`` (non-breaking).
+        """
+        return self._lookup_name or self.name
 
     def get_lookup_value(self, value):
         return self.parse_id(value)

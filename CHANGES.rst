@@ -1,3 +1,14 @@
+0.23.0 (unreleased)
+-------------------
+
+* Add an additive, non-breaking ``lookup_name`` kwarg to
+  ``djangoql.extras.AutocompleteField``. It overrides ``get_lookup_name()`` so a
+  picker can live under a second field name (e.g. ``<fk>__rel``) while still
+  filtering the **real** foreign key — letting a FK be exposed *both* as a
+  navigable relation (dot traversal) *and* as a value picker. Default ``None``
+  preserves current behavior. New docs section "Exposing a FK as both a
+  navigable relation and a value picker" documents the ``<fk>__rel`` idiom.
+
 0.22.1 (2026-06-04)
 -------------------
 
