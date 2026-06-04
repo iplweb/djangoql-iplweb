@@ -10,7 +10,7 @@ from django.db import DataError, NotSupportedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from core.admin import CustomUserAdmin
+from core.admin import BookAdmin, CustomUserAdmin
 
 from ..models import Book
 
@@ -52,6 +52,50 @@ class DjangoQLAdminTest(TestCase):
         self.assertEqual('core.book', introspections['current_model'])
         for model in ('core.book', 'auth.user', 'auth.group'):
             self.assertIn(model, introspections['models'])
+
+    def test_format_endpoint(self):
+        url = reverse('admin:core_book_djangoql_format')
+        # unauthorized request should be redirected
+        self.assertEqual(302, self.client.get(url).status_code)
+        self.assertTrue(self.client.login(**self.credentials))
+        data = self.get_json(url, data={'q': 'genre = 1 and rating = 2'})
+        self.assertEqual('genre = 1\n  and rating = 2', data['formatted'])
+
+    def test_format_endpoint_empty_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_format')
+        data = self.get_json(url, data={'q': '   '})
+        self.assertEqual('', data['formatted'])
+
+    def test_format_endpoint_syntax_error(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_format')
+        response = self.client.get(url, {'q': 'genre = = ='})
+        self.assertEqual(400, response.status_code)
+        self.assertIn('error', json.loads(response.content.decode('utf8')))
+
+    def test_explain_endpoint(self):
+        url = reverse('admin:core_book_djangoql_explain')
+        # unauthorized request should be redirected
+        self.assertEqual(302, self.client.get(url).status_code)
+        self.assertTrue(self.client.login(**self.credentials))
+        data = self.get_json(url, data={'q': 'genre = 1'})
+        self.assertIn('tree', data)
+        self.assertEqual('leaf', data['tree']['role'])
+        self.assertIn('count', data['tree'])
+
+    def test_explain_endpoint_empty_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_explain')
+        data = self.get_json(url, data={'q': ''})
+        self.assertIsNone(data['tree'])
+
+    def test_explain_endpoint_invalid_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_explain')
+        response = self.client.get(url, {'q': 'nonexistent_field = 1'})
+        self.assertEqual(400, response.status_code)
+        self.assertIn('error', json.loads(response.content.decode('utf8')))
 
     def test_introspection_suggestion_api_url(self):
         self.assertTrue(self.client.login(**self.credentials))
@@ -326,6 +370,25 @@ class DjangoQLSearchFlowTest(TestCase):
                     Book.objects.all(),
                     'name = "alpha"',
                 )
+
+    def test_media_includes_multiline_script(self):
+        # Shift+Enter newline support ships as a small framework-agnostic JS
+        # file that the admin loads alongside the completion widget.
+        rendered = str(self.book_admin.media)
+        self.assertIn('djangoql/js/multiline.js', rendered)
+
+    def test_highlight_opt_in_media(self):
+        # Highlighting is opt-in: off by default, no overlay assets loaded.
+        rendered = str(self.book_admin.media)
+        self.assertNotIn('djangoql/js/highlight.js', rendered)
+        self.assertNotIn('djangoql/css/highlight.css', rendered)
+
+        # Turning djangoql_highlight on adds the overlay JS + CSS.
+        admin_obj = BookAdmin(Book, django_admin.site)
+        admin_obj.djangoql_highlight = True
+        rendered_on = str(admin_obj.media)
+        self.assertIn('djangoql/js/highlight.js', rendered_on)
+        self.assertIn('djangoql/css/highlight.css', rendered_on)
 
     def test_media_includes_toggle_scripts(self):
         rendered = str(self.user_admin.media)

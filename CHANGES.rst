@@ -1,3 +1,48 @@
+Unreleased
+----------
+
+* **Example project:** new runnable ``example_project/`` demonstrating all of
+  the above on a richly related dataset (books → authors → countries,
+  publishers, genres) with a ``seed_demo`` management command. It includes a
+  restyled overlay demo page, a CodeMirror 6 page driven by
+  ``DjangoQLHighlight.tokenize()``, standalone ``format``/``explain``/``search``
+  endpoints, and an admin with completion + multi-line + the opt-in highlight
+  overlay. New docs page "Example project".
+* **Syntax highlighting (generic, no imposed style):** new
+  ``djangoql/js/highlight.js`` exposes ``DjangoQLHighlight.tokenize(text)`` — a
+  pure, lossless, UMD tokenizer mirroring the grammar (feed it to CodeMirror,
+  Prism, anything) — and ``attachOverlay(textarea)``, a lightweight transparent-
+  text overlay. ``highlight.css`` ships structural rules plus an overridable
+  default palette (CSS custom properties). In the admin it is opt-in via
+  ``DjangoQLSearchMixin.djangoql_highlight = True`` (off by default). The
+  library imposes no colour scheme or editor — that is the integrator's
+  decision. New docs page "Syntax highlighting".
+* **Query breakdown (record counts per branch):** new
+  ``djangoql.breakdown.explain(queryset, search, …)`` always returns the
+  per-node count tree (``{text, count, role, children}``, one ``count()`` per
+  node, guarded by ``max_nodes``), for any query — the on-demand sibling of the
+  zero-rows ``explain_empty`` (now a thin lazy wrapper sharing the same
+  helpers). ``DjangoQLSearchMixin`` exposes an ``…/explain/`` JSON endpoint
+  (``q`` → ``{tree}`` / ``{error}``+400). It is caller-triggered by design (not
+  run per search); wiring/rendering it is the integrator's decision. New docs
+  page "Query breakdown (counts)".
+* **Pretty-print / formatting:** new ``djangoql.formatter`` module with
+  ``format_query(query, indent=2)`` — parses a query and re-renders it as
+  indented, multi-line text (round-trip safe and idempotent) — and
+  ``serialize_node(node)`` for the compact one-line canonical form. The
+  empty-result breakdown now reuses ``serialize_node`` for its node labels
+  (dedup). ``DjangoQLSearchMixin`` exposes a ``…/format/`` JSON endpoint backing
+  a "Format" button; wiring the button is the integrator's decision. New docs
+  page "Pretty-print / formatting".
+* **Multi-line queries:** new ``djangoql/js/multiline.js`` lets users insert a
+  newline with **Shift+Enter** while plain **Enter** still submits. Loaded
+  automatically by ``DjangoQLSearchMixin`` in the admin; framework-agnostic and
+  reusable outside the admin (recognises ``textarea.djangoql`` /
+  ``textarea[data-djangoql]`` / ``textarea[name="q"]``, or call
+  ``DjangoQLMultiline.enable(el)``). It imposes no styling — the look of a
+  multi-line query box is the integrator's decision. New docs page
+  "Multi-line queries".
+
 0.23.0 (2026-06-04)
 -------------------
 
