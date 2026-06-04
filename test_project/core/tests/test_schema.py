@@ -321,3 +321,30 @@ class UnknownFieldSuggestionTest(TestCase):
         msg = self._error(NoSuggestSchema, Book, 'autho = 1')
         self.assertNotIn('Did you mean', msg)
         self.assertIn('Possible choices', msg)
+
+    def test_strong_match_suppresses_unrelated_suffix_noise(self):
+        # A clear winner must not be diluted by fields that merely share a
+        # "__suffix": 'autorzy__cnt' should suggest 'autorzy__count', never the
+        # unrelated 'utworzono__month'.
+        schema = DjangoQLSchema(Book)
+        candidates = [
+            'autorzy__count',
+            'autorzy',
+            'utworzono__month',
+            'utworzono__year',
+            'utworzono',
+            'tytul',
+            'isbn',
+        ]
+        result = schema.suggest_field_names('autorzy__cnt', candidates)
+        self.assertIn('autorzy__count', result)
+        self.assertNotIn('utworzono__month', result)
+        self.assertNotIn('utworzono__year', result)
+
+    def test_no_dominant_match_keeps_comparable_options(self):
+        # When several candidates are similarly close, keep them (this is a
+        # genuine ambiguity, not noise).
+        schema = DjangoQLSchema(Book)
+        result = schema.suggest_field_names('naem', ['name', 'names'])
+        self.assertIn('name', result)
+        self.assertIn('names', result)

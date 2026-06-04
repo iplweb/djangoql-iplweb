@@ -534,25 +534,48 @@ class DjangoQLSchema:
         """
         return ''
 
+    #: Minimum difflib similarity ratio for a field name to be offered as a
+    #: "Did you mean ...?" suggestion at all.
+    suggest_cutoff = 0.6
+    #: Once there is a best match, drop any candidate whose ratio is more than
+    #: this far below it. Prevents a clear winner (``autorzy__count``) from
+    #: being diluted by noise that merely shares a ``__suffix``
+    #: (``utworzono__month``).
+    suggest_margin = 0.1
+    #: Maximum number of suggestions to offer.
+    suggest_limit = 3
+
     def suggest_field_names(self, name_part, candidates):
         """
-        Return up to a few field names from ``candidates`` that look like a typo
-        of ``name_part``, best match first. Used to turn the "Unknown field"
-        error into a "Did you mean ...?" hint.
+        Return the field names from ``candidates`` that look like a typo of
+        ``name_part``, best match first. Used to turn the "Unknown field" error
+        into a "Did you mean ...?" hint.
 
-        Matching is case-insensitive and uses difflib's similarity ratio; the
-        0.6 cutoff distinguishes a near-miss (``author`` vs ``authors``) from an
-        unrelated string. Override to tune the cutoff/count or plug in another
-        algorithm.
+        Matching is case-insensitive and uses difflib's similarity ratio.
+        Candidates below ``suggest_cutoff`` are ignored (so genuine gibberish
+        yields no suggestions); among the rest, only those within
+        ``suggest_margin`` of the best match are kept, so a dominant match is
+        not diluted by weaker ones that only share a ``__suffix``. Override this
+        method (or the ``suggest_*`` attributes) to tune the behavior.
         """
-        lowered = {c.lower(): c for c in candidates}
-        hits = difflib.get_close_matches(
-            name_part.lower(),
-            list(lowered),
-            n=3,
-            cutoff=0.6,
+        name = name_part.lower()
+        scored = sorted(
+            (
+                (difflib.SequenceMatcher(None, name, c.lower()).ratio(), c)
+                for c in candidates
+            ),
+            key=lambda rc: rc[0],
+            reverse=True,
         )
-        return [lowered[h] for h in hits]
+        if not scored or scored[0][0] < self.suggest_cutoff:
+            return []
+        best = scored[0][0]
+        return [
+            c
+            for ratio, c in scored
+            if ratio >= self.suggest_cutoff
+            and best - ratio <= self.suggest_margin
+        ][: self.suggest_limit]
 
     def _unknown_field_message(self, model, model_cls, name_part):
         # If the name looks like a typo of a real field, point at the likely

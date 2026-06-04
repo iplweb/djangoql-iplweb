@@ -230,17 +230,27 @@ Unknown field: aoijdsofiajs. Possible choices are: author, genre, name, ...
 
 Matching is case-insensitive and considers **every** field name — including
 hidden derived fields — so a typo like `book__coun` can suggest the hidden
-`book__count` aggregate.
+`book__count` aggregate. When one candidate is a clear winner, weaker matches
+are dropped rather than listed alongside it, so `autorzy__cnt` suggests just
+`autorzy__count` and not unrelated fields that happen to share a `__suffix`.
 
-You can tune this behavior by overriding `suggest_field_names()` on your schema.
-It receives the mistyped name and the candidate field names, and returns the
-names to offer (return an empty list to disable suggestions entirely):
+The simplest way to tune the behavior is via three class attributes:
+
+``` python
+class MySchema(DjangoQLSchema):
+    suggest_cutoff = 0.7   # require a closer match (default 0.6)
+    suggest_margin = 0.05  # keep fewer near-ties (default 0.1)
+    suggest_limit = 1      # at most one suggestion (default 3)
+```
+
+For full control, override `suggest_field_names()`. It receives the mistyped
+name and the candidate field names, and returns the names to offer (return an
+empty list to disable suggestions entirely):
 
 ``` python
 class MySchema(DjangoQLSchema):
     def suggest_field_names(self, name_part, candidates):
         import difflib
-        # stricter cutoff, only ever suggest one field
         return difflib.get_close_matches(
             name_part.lower(),
             [c.lower() for c in candidates],
