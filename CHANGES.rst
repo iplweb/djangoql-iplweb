@@ -1,4 +1,4 @@
-0.23.0 (unreleased)
+0.23.0 (2026-06-04)
 -------------------
 
 * Add an additive, non-breaking ``lookup_name`` kwarg to
