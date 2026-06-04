@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.22.0 (2026-06-04)
+-------------------
 
 * The **"Unknown field" error** now suggests close matches for likely typos:
   ``Unknown field: autho. Did you mean: author?``. Suggestions are matched
