@@ -7,13 +7,13 @@ Every forward relation (ForeignKey and ManyToMany) on each model is exposed
   (``author.name``, ``author.country.name``);
 * under ``<name>__rel`` as an object-picker built on
   :class:`djangoql.extras.AutocompleteField` — suggestions are the real related
-  rows rendered ``"<label> [<pk>]"`` and the query filters that relation by
-  primary key.
+  rows rendered ``"<label> #<pk>"`` (the legacy ``"<label> [<pk>]"`` form is
+  still accepted on input) and the query filters that relation by primary key.
 
 The double-underscore name can't collide with the relation, so both idioms are
 available in the same query, e.g.::
 
-    author.country.name = "Poland" and author__rel = "Ursula Dick [42]"
+    author.country.name = "Poland" and author__rel = "Ursula Dick #42"
 
 This is generic: any FK/M2M on any introspected model gets a picker, including
 nested ones (``author.country__rel`` filters ``author__country`` by pk).

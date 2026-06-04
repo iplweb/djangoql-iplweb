@@ -758,7 +758,11 @@ class AutocompleteSchemaMixin:
         try:
             db_field = model._meta.get_field(field_name)
             nullable = getattr(db_field, 'null', False)
-        except Exception:
+        except FieldDoesNotExist:
+            # Picker fields are routinely registered under a name that is not a
+            # real model field (e.g. ``author__rel`` aliasing the ``author``
+            # FK). There is no DB column to read ``null`` from, so default to
+            # not-nullable; an explicit ``nullable`` on the config still wins.
             nullable = False
         if isinstance(config, AutocompleteField):
             field = config
