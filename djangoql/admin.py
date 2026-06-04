@@ -5,13 +5,14 @@ from django.contrib.admin.views.main import ChangeList
 from django.core.exceptions import FieldError, ValidationError
 from django.db import DataError, NotSupportedError
 from django.forms import Media
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.views.generic import TemplateView
 
 from .breakdown import explain_empty
 from .exceptions import DjangoQLError
+from .formatter import format_query
 from .queryset import apply_search
 from .schema import DjangoQLSchema
 from .serializers import SuggestionsAPISerializer
@@ -201,6 +202,14 @@ class DjangoQLSearchMixin:
                     ),
                 ),
                 path(
+                    'format/',
+                    self.admin_site.admin_view(self.djangoql_format),
+                    name='{}_{}_djangoql_format'.format(
+                        self.model._meta.app_label,
+                        self.model._meta.model_name,
+                    ),
+                ),
+                path(
                     'djangoql-syntax/',
                     self.admin_site.admin_view(
                         TemplateView.as_view(
@@ -211,6 +220,23 @@ class DjangoQLSearchMixin:
                 ),
             ]
         return custom_urls + super().get_urls()
+
+    def djangoql_format(self, request):
+        """Pretty-print a query and return it as JSON.
+
+        On-demand primitive backing a "Format" button: the front-end posts the
+        raw query (``q``) and gets back ``{"formatted": ...}``. A query that
+        does not parse yields ``{"error": ...}`` with HTTP 400. How (or whether)
+        to wire a Format button into the UI is the integrator's decision.
+        """
+        query = request.POST.get('q', request.GET.get('q', ''))
+        if not query.strip():
+            return JsonResponse({'formatted': ''})
+        try:
+            formatted = format_query(query)
+        except DjangoQLError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'formatted': formatted})
 
     def introspect(self, request):
         suggestions_url = reverse(

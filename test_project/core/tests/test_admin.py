@@ -53,6 +53,27 @@ class DjangoQLAdminTest(TestCase):
         for model in ('core.book', 'auth.user', 'auth.group'):
             self.assertIn(model, introspections['models'])
 
+    def test_format_endpoint(self):
+        url = reverse('admin:core_book_djangoql_format')
+        # unauthorized request should be redirected
+        self.assertEqual(302, self.client.get(url).status_code)
+        self.assertTrue(self.client.login(**self.credentials))
+        data = self.get_json(url, data={'q': 'genre = 1 and rating = 2'})
+        self.assertEqual('genre = 1\n  and rating = 2', data['formatted'])
+
+    def test_format_endpoint_empty_query(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_format')
+        data = self.get_json(url, data={'q': '   '})
+        self.assertEqual('', data['formatted'])
+
+    def test_format_endpoint_syntax_error(self):
+        self.assertTrue(self.client.login(**self.credentials))
+        url = reverse('admin:core_book_djangoql_format')
+        response = self.client.get(url, {'q': 'genre = = ='})
+        self.assertEqual(400, response.status_code)
+        self.assertIn('error', json.loads(response.content.decode('utf8')))
+
     def test_introspection_suggestion_api_url(self):
         self.assertTrue(self.client.login(**self.credentials))
         for app in ['admin', 'zaibatsu']:

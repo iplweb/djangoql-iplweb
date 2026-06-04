@@ -22,6 +22,7 @@ returned tree carries ``truncated=True`` (no silent cap).
 """
 
 from .ast import Logical
+from .formatter import serialize_node
 from .parser import DjangoQLParser
 from .queryset import build_filter
 from .schema import DjangoQLSchema
@@ -33,42 +34,11 @@ __all__ = ['explain_empty']
 # truncating the breakdown to the top-level conjuncts.
 DEFAULT_MAX_NODES = 50
 
-
-def _quote(value):
-    if isinstance(value, str):
-        return '"%s"' % value
-    if value is None:
-        return 'None'
-    if isinstance(value, bool):
-        return 'True' if value else 'False'
-    return str(value)
-
-
-def _leaf_text(node):
-    """Reconstruct a readable label for a comparison leaf from the AST.
-
-    We render from the AST rather than slicing the source: the parser does not
-    expose per-node source spans, and an AST rendering is stable and
-    unambiguous for v1.
-    """
-    name = node.left.value
-    op = node.operator.operator
-    right = node.right
-    # A List right-hand side (``in (1, 2)``) renders its items.
-    if hasattr(right, 'items'):
-        values = ', '.join(_quote(v) for v in right.value)
-        return '%s %s (%s)' % (name, op, values)
-    return '%s %s %s' % (name, op, _quote(right.value))
-
-
-def _node_text(node):
-    if isinstance(node.operator, Logical):
-        return '(%s) %s (%s)' % (
-            _node_text(node.left),
-            node.operator.operator,
-            _node_text(node.right),
-        )
-    return _leaf_text(node)
+# Node labels are rendered from the AST (the parser exposes no per-node source
+# spans). ``serialize_node`` gives a stable, unambiguous one-line rendering and
+# is shared with the pretty-printer.
+_leaf_text = serialize_node
+_node_text = serialize_node
 
 
 def _count(base, node, schema_instance):

@@ -1,6 +1,14 @@
 Unreleased
 ----------
 
+* **Pretty-print / formatting:** new ``djangoql.formatter`` module with
+  ``format_query(query, indent=2)`` — parses a query and re-renders it as
+  indented, multi-line text (round-trip safe and idempotent) — and
+  ``serialize_node(node)`` for the compact one-line canonical form. The
+  empty-result breakdown now reuses ``serialize_node`` for its node labels
+  (dedup). ``DjangoQLSearchMixin`` exposes a ``…/format/`` JSON endpoint backing
+  a "Format" button; wiring the button is the integrator's decision. New docs
+  page "Pretty-print / formatting".
 * **Multi-line queries:** new ``djangoql/js/multiline.js`` lets users insert a
   newline with **Shift+Enter** while plain **Enter** still submits. Loaded
   automatically by ``DjangoQLSearchMixin`` in the admin; framework-agnostic and
