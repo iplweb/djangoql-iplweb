@@ -1,6 +1,15 @@
 Unreleased
 ----------
 
+* **Syntax highlighting (generic, no imposed style):** new
+  ``djangoql/js/highlight.js`` exposes ``DjangoQLHighlight.tokenize(text)`` — a
+  pure, lossless, UMD tokenizer mirroring the grammar (feed it to CodeMirror,
+  Prism, anything) — and ``attachOverlay(textarea)``, a lightweight transparent-
+  text overlay. ``highlight.css`` ships structural rules plus an overridable
+  default palette (CSS custom properties). In the admin it is opt-in via
+  ``DjangoQLSearchMixin.djangoql_highlight = True`` (off by default). The
+  library imposes no colour scheme or editor — that is the integrator's
+  decision. New docs page "Syntax highlighting".
 * **Query breakdown (record counts per branch):** new
   ``djangoql.breakdown.explain(queryset, search, …)`` always returns the
   per-node count tree (``{text, count, role, children}``, one ``count()`` per

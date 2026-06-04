@@ -10,7 +10,7 @@ from django.db import DataError, NotSupportedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from core.admin import CustomUserAdmin
+from core.admin import BookAdmin, CustomUserAdmin
 
 from ..models import Book
 
@@ -376,6 +376,19 @@ class DjangoQLSearchFlowTest(TestCase):
         # file that the admin loads alongside the completion widget.
         rendered = str(self.book_admin.media)
         self.assertIn('djangoql/js/multiline.js', rendered)
+
+    def test_highlight_opt_in_media(self):
+        # Highlighting is opt-in: off by default, no overlay assets loaded.
+        rendered = str(self.book_admin.media)
+        self.assertNotIn('djangoql/js/highlight.js', rendered)
+        self.assertNotIn('djangoql/css/highlight.css', rendered)
+
+        # Turning djangoql_highlight on adds the overlay JS + CSS.
+        admin_obj = BookAdmin(Book, django_admin.site)
+        admin_obj.djangoql_highlight = True
+        rendered_on = str(admin_obj.media)
+        self.assertIn('djangoql/js/highlight.js', rendered_on)
+        self.assertIn('djangoql/css/highlight.css', rendered_on)
 
     def test_media_includes_toggle_scripts(self):
         rendered = str(self.user_admin.media)

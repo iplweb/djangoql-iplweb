@@ -36,5 +36,6 @@ nav:
   - Empty-result breakdown: empty-result-breakdown.md
   - Query breakdown (counts): query-breakdown.md
   - Outside the admin: queryset.md
+  - Syntax highlighting: syntax-highlighting.md
   - Completion widget: completion-widget.md
   - Internationalization: i18n.md

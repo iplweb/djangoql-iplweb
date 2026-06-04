@@ -36,6 +36,13 @@ class DjangoQLSearchMixin:
     djangoql_completion_enabled_by_default = True
     djangoql_schema = DjangoQLSchema
     djangoql_syntax_help_template = 'djangoql/syntax_help.html'
+    # Opt-in syntax highlighting overlay for the search box. Off by default:
+    # the admin does not need it, and an overlay can interfere with the
+    # completion widget's layout, so enabling it is a deliberate choice. When
+    # on, the highlight.js/.css primitives are loaded and the search textarea
+    # gets the ``djangoql-highlight`` class. Colours come from CSS variables and
+    # are overridable; the library imposes no palette.
+    djangoql_highlight = False
     # When a valid DjangoQL search returns zero rows, explain *where* in the
     # query the data runs out and surface it as a warning. Set to False to
     # disable the extra (lazy, count()-per-node) queries.
@@ -170,15 +177,16 @@ class DjangoQLSearchMixin:
             # admin textarea created by completion_admin.js already exists; the
             # script itself is framework-agnostic and delegates on document.
             js.append('djangoql/js/multiline.js')
-            media += Media(
-                css={
-                    '': (
-                        'djangoql/css/completion.css',
-                        'djangoql/css/completion_admin.css',
-                    )
-                },
-                js=js,
-            )
+            css = [
+                'djangoql/css/completion.css',
+                'djangoql/css/completion_admin.css',
+            ]
+            if self.djangoql_highlight:
+                # Opt-in highlighting overlay (see djangoql_highlight).
+                js.append('djangoql/js/highlight.js')
+                js.append('djangoql/js/completion_admin_highlight.js')
+                css.append('djangoql/css/highlight.css')
+            media += Media(css={'': tuple(css)}, js=js)
         return media
 
     def get_urls(self):
