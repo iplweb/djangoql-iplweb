@@ -1,3 +1,29 @@
+0.25.0 (2026-06-04)
+-------------------
+
+* **Value autocomplete inside ``in (...)`` lists:** the completion widget now
+  offers value suggestions while the caret sits inside an ``<field> in ( … )``
+  (or ``not in ( … )``) list, not only right after a binary operator. It
+  resolves the field to the left of ``in`` and switches to value scope so the
+  existing suggestion/insertion machinery applies unchanged. The enhancement is
+  best-effort and never breaks base completion — any failure is logged to
+  ``console.debug`` rather than swallowed.
+* **example_project test suite:** the showcase project now ships its own tests,
+  covering the generic ``<name>__rel`` object pickers (forward FK + M2M, nested
+  relations, ``lookup_name`` redirection to the real FK, free-text fallback) and
+  the standalone ``format`` / ``explain`` / ``search`` JSON endpoints including
+  error-location reporting. Run them with ``manage.py test library``; they are
+  wired into CI across the full Python/Django matrix.
+* **Coverage:** djangoql test coverage raised to ~99%. New tests exercise
+  ``AutocompleteField`` edge cases (non-string validation, provider selection,
+  request threading through ``SuggestionsAPIView``, url/queryset/callable
+  configs), the admin's empty-result breakdown error handling, and the
+  aggregate/date-part "unknown field" hint fall-throughs.
+* **Fixes:** ``AutocompleteSchemaMixin`` now catches the specific
+  ``FieldDoesNotExist`` (instead of a blanket ``except Exception``) when reading
+  a picker's nullability from the model; the example schema docstring reflects
+  the current ``"<label> #<id>"`` suggestion rendering.
+
 0.24.0 (2026-06-04)
 -------------------
 
