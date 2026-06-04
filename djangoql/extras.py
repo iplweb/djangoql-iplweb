@@ -533,6 +533,7 @@ class AutocompleteField(StrField):
         view=None,
         label=None,
         id_of=None,
+        lookup_name=None,
         search_param='q',
         limit=50,
     ):
@@ -550,6 +551,7 @@ class AutocompleteField(StrField):
         self.view = view
         self.label = label
         self.id_of = id_of
+        self._lookup_name = lookup_name
         self.search_param = search_param
         self.limit = limit
         self.request = None
@@ -653,6 +655,11 @@ class AutocompleteField(StrField):
         return request
 
     # -- lookup / filtering ------------------------------------------------
+
+    def get_lookup_name(self):
+        # `<fk>__rel` (alt-nazwa pickera) filtruje realny FK podany w
+        # lookup_name; bez niego zachowanie = self.name (non-breaking).
+        return self._lookup_name or self.name
 
     def get_lookup_value(self, value):
         return self.parse_id(value)

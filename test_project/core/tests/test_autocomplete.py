@@ -225,3 +225,91 @@ class ValidationTest(TestCase):
         schema = QuerysetAutocompleteSchema(Book)
         ast = DjangoQLParser().parse('author = "Jan [1]"')
         schema.validate(ast)  # must not raise
+
+
+class RelAndPickerSchema(AutocompleteSchemaMixin, DjangoQLSchema):
+    """`author` zostaje relacją (trawersacja z kropką), a `author__rel` to
+    picker filtrujący realny FK `author` przez lookup_name."""
+
+    include = (Book, User)
+    autocomplete = {
+        Book: {
+            'author__rel': {
+                'lookup_name': 'author',
+                'queryset': lambda s: User.objects.filter(
+                    username__icontains=s
+                ).order_by('username'),
+                'search_fields': ['username'],
+                'label': lambda u: u.username,
+            },
+        },
+    }
+
+    def get_fields(self, model):
+        fields = list(super().get_fields(model))
+        if model is Book:
+            fields.append('author__rel')
+        return fields
+
+
+class LookupNameTest(TestCase):
+    def test_lookup_name_defaults_to_field_name(self):
+        field = AutocompleteField(model=Book, name='author__rel')
+        self.assertEqual(field.get_lookup_name(), 'author__rel')
+
+    def test_lookup_name_overrides_lookup(self):
+        field = AutocompleteField(
+            model=Book, name='author__rel', lookup_name='author'
+        )
+        self.assertEqual(field.get_lookup_name(), 'author')
+
+
+class RelAndPickerCoexistTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.kow = User.objects.create(username='Jan Kowalski')
+        cls.nowak = User.objects.create(username='Anna Nowak')
+        cls.b1 = Book.objects.create(name='b1', author=cls.kow)
+        cls.b2 = Book.objects.create(name='b2', author=cls.nowak)
+
+    def _search(self, q):
+        return apply_search(Book.objects.all(), q, schema=RelAndPickerSchema)
+
+    def test_picker_filters_real_fk_by_pk(self):
+        qs = self._search('author__rel = "Jan Kowalski [%d]"' % self.kow.pk)
+        sql = str(qs.query)
+        self.assertIn('author_id', sql)
+        self.assertNotIn('author__rel', sql)
+        self.assertEqual(list(qs), [self.b1])
+
+    def test_picker_in_filters_by_pks(self):
+        qs = self._search(
+            'author__rel in ("Jan Kowalski [%d]", "Anna Nowak [%d]")'
+            % (self.kow.pk, self.nowak.pk)
+        )
+        self.assertEqual(sorted(b.pk for b in qs), [self.b1.pk, self.b2.pk])
+
+    def test_picker_free_text_fallback_targets_real_fk(self):
+        qs = self._search('author__rel = "kowal"')
+        sql = str(qs.query).lower()
+        self.assertIn('username', sql)
+        self.assertIn('like', sql)
+        self.assertEqual(list(qs), [self.b1])
+
+    def test_dot_traversal_still_works(self):
+        qs = self._search('author.username = "Jan Kowalski"')
+        self.assertEqual(list(qs), [self.b1])
+
+    def test_both_idioms_in_one_query(self):
+        qs = self._search(
+            'author.username = "Jan Kowalski" '
+            'and author__rel = "Jan Kowalski [%d]"' % self.kow.pk
+        )
+        self.assertEqual(list(qs), [self.b1])
+
+    def test_picker_is_value_field_relation_is_relation(self):
+        schema = RelAndPickerSchema(Book)
+        fields = schema.models['core.book']
+        self.assertIsInstance(fields['author__rel'], AutocompleteField)
+        self.assertIsInstance(fields['author'], RelationField)
+        self.assertEqual(fields['author'].type, 'relation')
