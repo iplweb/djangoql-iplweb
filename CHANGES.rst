@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.24.0 (2026-06-04)
+-------------------
 
 * **Example project:** new runnable ``example_project/`` demonstrating all of
   the above on a richly related dataset (books → authors → countries,
