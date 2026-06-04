@@ -4,16 +4,20 @@ Unreleased
 * **Example project:** new runnable ``example_project/`` demonstrating all of
   the above on a richly related dataset (books → authors → countries,
   publishers, genres) with a ``seed_demo`` management command. It includes a
-  restyled overlay demo page, a CodeMirror 6 page driven by
-  ``DjangoQLHighlight.tokenize()``, standalone ``format``/``explain``/``search``
+  restyled search demo page (auto-completion, multi-line, highlight overlay,
+  Format, Explain counts), standalone ``format``/``explain``/``search``
   endpoints, and an admin with completion + multi-line + the opt-in highlight
   overlay. New docs page "Example project".
 * **Syntax highlighting (generic, no imposed style):** new
   ``djangoql/js/highlight.js`` exposes ``DjangoQLHighlight.tokenize(text)`` — a
-  pure, lossless, UMD tokenizer mirroring the grammar (feed it to CodeMirror,
-  Prism, anything) — and ``attachOverlay(textarea)``, a lightweight transparent-
-  text overlay. ``highlight.css`` ships structural rules plus an overridable
-  default palette (CSS custom properties). In the admin it is opt-in via
+  pure, lossless, UMD tokenizer mirroring the grammar (feed it to any editor) —
+  and ``attachOverlay(textarea)``, a lightweight transparent-text overlay (which
+  keeps the caret visible by setting ``caret-color`` to the input's original
+  text colour). The overlay handle can flag a **syntax-error location** with a
+  red squiggle via ``setError(offset)`` / ``setErrorAt(line, column)`` (DjangoQL
+  errors carry ``line``/``column``); ``offsetFromLineColumn`` is exported too.
+  ``highlight.css`` ships structural rules plus an overridable default palette
+  (CSS custom properties). In the admin it is opt-in via
   ``DjangoQLSearchMixin.djangoql_highlight = True`` (off by default). The
   library imposes no colour scheme or editor — that is the integrator's
   decision. New docs page "Syntax highlighting".

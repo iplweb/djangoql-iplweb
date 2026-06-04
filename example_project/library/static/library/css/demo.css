@@ -142,25 +142,6 @@ footer {
   color: var(--muted); font-size: 13px;
 }
 
-/* CodeMirror editor shell + the same tokenizer-driven palette on a dark theme */
-.cm-editor {
-  border: 1px solid rgba(124, 92, 255, 0.5);
-  border-radius: 12px;
-  background: #0b0e22;
-  font: 15px/1.6 ui-monospace, 'JetBrains Mono', Menlo, monospace;
-  min-height: 90px;
-}
-.cm-editor.cm-focused { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.25); }
-.cm-editor .cm-content, .cm-editor .cm-gutters { color: var(--ink); }
-.cm-editor .cm-gutters { background: #0b0e22; border-color: rgba(255, 255, 255, 0.08); }
-.cm-editor .dql-tok-name { color: #8be9fd; }
-.cm-editor .dql-tok-operator { color: #ff79c6; }
-.cm-editor .dql-tok-logical { color: #ffb454; font-weight: 600; }
-.cm-editor .dql-tok-string { color: #50fa7b; }
-.cm-editor .dql-tok-number,
-.cm-editor .dql-tok-bool,
-.cm-editor .dql-tok-none { color: #bd93f9; }
-
 /* ---- Recolour the DjangoQL overlay via its CSS variables -------------- */
 .dql-highlight-backdrop {
   --dql-name: #8be9fd;
@@ -173,4 +154,11 @@ footer {
   --dql-paren: #9aa0c8;
   --dql-comma: #9aa0c8;
   --dql-caret: #ffffff;
+  --dql-error-mark: #ff8a9b;
+  --dql-error-mark-bg: rgba(255, 93, 115, 0.42);
+}
+/* Make the flagged token pop in this (dark) theme. */
+.dql-highlight-backdrop .dql-tok-errormark {
+  color: #fff;
+  text-decoration-thickness: 2px;
 }

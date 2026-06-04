@@ -96,16 +96,41 @@
     return s.replace(/[&<>]/g, function (c) { return ESCAPES[c]; });
   }
 
-  function renderHtml(text) {
+  // Index of the token to flag as the error location, or -1. The flagged token
+  // is the one containing `errorOffset`; if none contains it (e.g. at EOF or in
+  // whitespace) the nearest preceding non-whitespace token is used, so a marker
+  // always lands on a real token and stays perfectly aligned.
+  function errorTokenIndex(tokens, errorOffset) {
+    if (errorOffset == null || errorOffset < 0) {
+      return -1;
+    }
+    var fallback = -1;
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i];
+      if (errorOffset >= t.start && errorOffset < t.end) {
+        return i;
+      }
+      if (t.type !== 'ws' && t.start <= errorOffset) {
+        fallback = i;
+      }
+    }
+    return fallback;
+  }
+
+  function renderHtml(text, errorOffset) {
     // XSS-safe: every token value is HTML-escaped, and t.type is always one of
     // the fixed PATTERNS labels (never user input), so the class name and the
     // markup are not attacker-controlled.
     var tokens = tokenize(text);
+    var errIndex = errorTokenIndex(tokens, errorOffset);
     var html = '';
     for (var i = 0; i < tokens.length; i++) {
       var t = tokens[i];
-      html += '<span class="dql-tok-' + t.type + '">'
-        + escapeHtml(t.value) + '</span>';
+      var cls = 'dql-tok-' + t.type;
+      if (i === errIndex) {
+        cls += ' dql-tok-errormark';
+      }
+      html += '<span class="' + cls + '">' + escapeHtml(t.value) + '</span>';
     }
     // A trailing newline is not rendered unless followed by content; add a
     // marker so the backdrop height matches the textarea.
@@ -113,6 +138,17 @@
       html += '\n';
     }
     return html;
+  }
+
+  // Convert a 1-based (line, column) — as carried by DjangoQL parse/lex errors —
+  // to a 0-based character offset into `text`.
+  function offsetFromLineColumn(text, line, column) {
+    var lines = String(text).split('\n');
+    var offset = 0;
+    for (var i = 0; i < line - 1 && i < lines.length; i++) {
+      offset += lines[i].length + 1; // + the '\n'
+    }
+    return offset + (column - 1);
   }
 
   // Metrics that must match for backdrop text to line up with textarea text.
@@ -147,13 +183,23 @@
     code.className = 'dql-highlight-code';
     backdrop.appendChild(code);
 
+    // Capture the real text colour *before* the input is made transparent, so
+    // we can keep the caret visible. (caret-color: currentColor would resolve
+    // to the transparent text colour and hide the caret.)
+    var textColor = window.getComputedStyle(textarea).color;
+
     textarea.parentNode.insertBefore(wrapper, textarea);
     wrapper.appendChild(backdrop);
     wrapper.appendChild(textarea);
     textarea.classList.add('dql-highlight-input');
+    // Keep the caret visible against the now-transparent input text. An
+    // integrator can still override it with the --dql-caret variable / CSS.
+    textarea.style.caretColor = textColor;
+
+    var errorOffset = -1;
 
     function paint() {
-      code.innerHTML = renderHtml(textarea.value);
+      code.innerHTML = renderHtml(textarea.value, errorOffset);
     }
     function syncScroll() {
       backdrop.scrollTop = textarea.scrollTop;
@@ -163,13 +209,29 @@
     syncStyles(textarea, backdrop);
     paint();
 
-    textarea.addEventListener('input', paint);
+    // Editing invalidates any shown error marker.
+    textarea.addEventListener('input', function () {
+      errorOffset = -1;
+      paint();
+    });
     textarea.addEventListener('scroll', syncScroll);
     window.addEventListener('resize', function () {
       syncStyles(textarea, backdrop);
     });
 
-    return { repaint: paint, backdrop: backdrop };
+    return {
+      repaint: paint,
+      backdrop: backdrop,
+      // Mark the token at a 0-based character offset as the error location.
+      setError: function (offset) { errorOffset = offset; paint(); },
+      // Mark the error from a 1-based (line, column) as carried by DjangoQL
+      // parse/lex errors.
+      setErrorAt: function (line, column) {
+        errorOffset = offsetFromLineColumn(textarea.value, line, column);
+        paint();
+      },
+      clearError: function () { errorOffset = -1; paint(); },
+    };
   }
 
   // Auto-enable on textareas that opt in explicitly. Conservative by design:
@@ -194,6 +256,7 @@
   return {
     tokenize: tokenize,
     renderHtml: renderHtml,
+    offsetFromLineColumn: offsetFromLineColumn,
     attachOverlay: attachOverlay,
     enable: attachOverlay,
   };

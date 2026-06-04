@@ -21,6 +21,8 @@ from djangoql.breakdown import explain
 from djangoql.exceptions import DjangoQLError
 from djangoql.formatter import format_query
 from djangoql.queryset import apply_search
+from djangoql.schema import DjangoQLSchema
+from djangoql.serializers import DjangoQLSchemaSerializer
 
 from .models import Book
 
@@ -32,21 +34,42 @@ EXAMPLES = [
     'author.country.name = "Poland" or publisher.name ~ "Press"',
     'year >= 2000 and (genres.name = "Science Fiction" or rating > 4)',
     'pages > 400 and author.alive = True and price < 30',
+    'rating > 4 and rating < 2',
+    'author.name = = "x"',
 ]
 
 
 def index(request):
-    return render(request, 'library/demo.html', {'examples': EXAMPLES})
-
-
-def codemirror(request):
-    return render(request, 'library/codemirror.html', {'examples': EXAMPLES})
+    # Introspections power the completion widget (field/value auto-completion).
+    # Embedded inline so the page needs no extra request.
+    introspections = DjangoQLSchemaSerializer().serialize(DjangoQLSchema(Book))
+    return render(
+        request,
+        'library/demo.html',
+        {
+            'examples': EXAMPLES,
+            'introspections': json.dumps(introspections),
+        },
+    )
 
 
 def _query(request):
     if request.method == 'POST':
         return request.POST.get('q', '')
     return request.GET.get('q', '')
+
+
+def _error_response(exc):
+    """JSON error including the 1-based (line, column) when the exception
+    carries one (DjangoQL parse/lex errors do), so the front-end can mark the
+    spot in the query box."""
+    payload = {'error': str(exc)}
+    line = getattr(exc, 'line', None)
+    column = getattr(exc, 'column', None)
+    if line and column:
+        payload['line'] = line
+        payload['column'] = column
+    return JsonResponse(payload, status=400)
 
 
 @csrf_exempt
@@ -57,7 +80,7 @@ def api_format(request):
     try:
         return JsonResponse({'formatted': format_query(query)})
     except DjangoQLError as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        return _error_response(e)
 
 
 @csrf_exempt
@@ -68,7 +91,7 @@ def api_explain(request):
     try:
         tree = explain(Book.objects.all(), query)
     except QUERY_ERRORS as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        return _error_response(e)
     return JsonResponse({'tree': tree})
 
 
@@ -80,7 +103,7 @@ def api_search(request):
         try:
             qs = apply_search(qs, query)
         except QUERY_ERRORS as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return _error_response(e)
     total = qs.count()
     rows = [
         {
@@ -95,13 +118,3 @@ def api_search(request):
         for b in qs[:100]
     ]
     return JsonResponse({'total': total, 'shown': len(rows), 'rows': rows})
-
-
-def api_introspect(request):
-    """Schema JSON for the completion widget (used by the CodeMirror page)."""
-    from djangoql.schema import DjangoQLSchema
-    from djangoql.serializers import DjangoQLSchemaSerializer
-
-    schema = DjangoQLSchema(Book)
-    data = DjangoQLSchemaSerializer().serialize(schema)
-    return JsonResponse(json.loads(json.dumps(data)))

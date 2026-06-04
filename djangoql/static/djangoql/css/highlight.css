@@ -46,7 +46,10 @@
   position: relative;
   background: transparent;
   color: transparent;
-  caret-color: var(--dql-caret, currentColor);
+  /* The caret is set to the input's original text colour from JS (so it stays
+     visible against the transparent text); --dql-caret overrides it. Never use
+     currentColor here — it would resolve to the transparent text colour. */
+  caret-color: var(--dql-caret, #000);
 }
 
 /* ---- Default palette (override the variables to restyle) -------------- */
@@ -62,3 +65,14 @@
 .dql-tok-comma { color: var(--dql-comma, #57606a); }
 .dql-tok-error { color: var(--dql-error, #ffffff); background: var(--dql-error-bg, #cf222e); }
 .dql-tok-ws { color: inherit; }
+
+/* The token flagged as a syntax-error location (overlay.setError / setErrorAt).
+   A red wavy underline, like an editor squiggle; override --dql-error-mark. */
+.dql-tok-errormark {
+  text-decoration: var(--dql-error-mark-line, underline) wavy
+    var(--dql-error-mark, #cf222e);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+  background: var(--dql-error-mark-bg, rgba(207, 34, 46, 0.18));
+  border-radius: 3px;
+}

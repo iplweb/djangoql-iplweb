@@ -12,9 +12,26 @@
   var explainPanel = document.getElementById('explain-panel');
   var explainTree = document.getElementById('explain-tree');
 
-  function showError(msg) {
+  // Attach the highlight overlay here so we keep its handle and can mark the
+  // syntax-error location returned by the API.
+  var overlay = window.DjangoQLHighlight
+    ? DjangoQLHighlight.attachOverlay(textarea)
+    : null;
+
+  function clearError() {
+    errorEl.hidden = true;
+    if (overlay) { overlay.clearError(); }
+  }
+
+  // Show the message and, when the API reports a (line, column), mark that
+  // spot in the query box.
+  function showError(data) {
+    var msg = (data && data.error) || 'Query error';
     errorEl.textContent = msg;
-    errorEl.hidden = !msg;
+    errorEl.hidden = false;
+    if (overlay && data && data.line && data.column) {
+      overlay.setErrorAt(data.line, data.column);
+    }
   }
 
   function post(url) {
@@ -35,9 +52,9 @@
   }
 
   function run() {
-    showError('');
+    clearError();
     post('/api/search/').then(function (res) {
-      if (!res.ok) { showError(res.data.error || 'Query error'); return; }
+      if (!res.ok) { showError(res.data); return; }
       resultCount.textContent =
         'showing ' + res.data.shown + ' of ' + res.data.total;
       resultsBody.innerHTML = '';
@@ -56,9 +73,9 @@
   }
 
   function format() {
-    showError('');
+    clearError();
     post('/api/format/').then(function (res) {
-      if (!res.ok) { showError(res.data.error || 'Cannot format'); return; }
+      if (!res.ok) { showError(res.data); return; }
       if (res.data.formatted) {
         textarea.value = res.data.formatted;
         textarea.rows = Math.max(3, res.data.formatted.split('\n').length);
@@ -90,9 +107,9 @@
   }
 
   function explain() {
-    showError('');
+    clearError();
     post('/api/explain/').then(function (res) {
-      if (!res.ok) { showError(res.data.error || 'Cannot explain'); return; }
+      if (!res.ok) { showError(res.data); return; }
       explainTree.innerHTML = '';
       if (!res.data.tree) { explainPanel.hidden = true; return; }
       var ul = document.createElement('ul');

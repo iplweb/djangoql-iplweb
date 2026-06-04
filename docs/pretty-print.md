@@ -21,6 +21,8 @@ This is a pure, AST-driven transformation: the query is parsed and rendered
 back. Re-parsing the formatted text yields an **equal** AST, and formatting is
 idempotent (formatting an already-formatted query changes nothing).
 
+![Formatted query in the example project](img/demo-format.png)
+
 ## Library primitive: `format_query`
 
 ```python

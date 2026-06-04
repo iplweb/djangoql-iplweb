@@ -9,21 +9,40 @@ countries, publishers, and genres):
   indentation.
 - **Per-branch record counts** — an *Explain counts* button shows how many rows
   each sub-expression matches and where an `AND` collapses to zero.
-- **Syntax highlighting** — a restyled lightweight overlay, plus a
-  **CodeMirror 6** page driven by the same tokenizer.
+- **Syntax highlighting** — the library's restyled lightweight overlay.
+- **Auto-completion** — field and value names complete as you type (the
+  DjangoQL completion widget), on the demo page and in the admin.
 - The **Django admin** with the completion widget, multi-line input, and the
   (opt-in) highlighting overlay turned on.
 
-> The colours, layout, and CodeMirror integration here are this demo's own
-> choices. DjangoQL ships the primitives (tokenizer, overlay, `format`/`explain`
+> The colours and layout here are this demo's own choices. DjangoQL ships the
+> primitives (completion widget, tokenizer, overlay, `format`/`explain`
 > endpoints, `multiline.js`); it imposes none of the styling.
+
+## What it looks like
+
+Running a query — auto-completion, live syntax highlighting, results:
+
+![Search demo](../docs/img/demo-search.png)
+
+The **Format** button re-indents a query:
+
+![Formatted query](../docs/img/demo-format.png)
+
+**Explain counts** shows per-branch row counts — here each side matches ~500
+rows but their `and` matches none, so the red node is where the data runs out:
+
+![Per-branch counts for an empty result](../docs/img/demo-explain.png)
+
+Syntax errors are pinpointed in the query box:
+
+![Syntax error highlighted](../docs/img/demo-error.png)
 
 ## Requirements
 
 - Python 3.9+ and Django (already pulled in as a dependency of this repo).
 - The repository checked out; run the commands below from `example_project/`.
-- The CodeMirror 6 page loads CodeMirror from a CDN (`esm.sh`), so that page
-  needs internet access. Everything else works fully offline.
+- Everything works fully offline.
 
 ## Run it
 
@@ -53,9 +72,8 @@ Then open:
 
 | URL                         | What it shows                                            |
 | --------------------------- | ------------------------------------------------------- |
-| <http://127.0.0.1:8000/>            | Overlay demo: multi-line, highlight, Format, Explain counts, results |
-| <http://127.0.0.1:8000/codemirror/> | CodeMirror 6 editor coloured by `DjangoQLHighlight.tokenize()` |
-| <http://127.0.0.1:8000/admin/>      | Django admin (completion + multi-line + highlight overlay) |
+| <http://127.0.0.1:8000/>       | Search demo: auto-completion, multi-line, highlight, Format, Explain counts, results |
+| <http://127.0.0.1:8000/admin/> | Django admin (completion + multi-line + highlight overlay) |
 
 ## Things to try
 
@@ -67,6 +85,8 @@ author.country.name = "Poland" or publisher.name ~ "Press"
 year >= 2000 and (genres.name = "Science Fiction" or rating > 4)
 ```
 
+- Start typing a field name (e.g. `author.`) and pick from the
+  **auto-completion** suggestions.
 - Press **Shift+Enter** to break a long query across lines, then **Format** to
   re-indent it.
 - Click **Explain counts** to see per-branch row counts — try a query whose two

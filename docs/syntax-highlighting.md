@@ -54,6 +54,27 @@ it explicitly:
 DjangoQLHighlight.attachOverlay(document.querySelector('textarea'));
 ```
 
+`attachOverlay` returns a handle with `repaint()`, `setError(offset)`,
+`setErrorAt(line, column)`, and `clearError()`.
+
+### Marking a syntax-error location
+
+When a query fails to parse, DjangoQL errors carry a 1-based `line` and
+`column` (see `DjangoQLError.line` / `.column`). Feed them to the overlay to
+flag the offending token with a red squiggle (the `.dql-tok-errormark` class,
+restyleable via `--dql-error-mark` / `--dql-error-mark-bg`); typing clears it:
+
+```js
+var overlay = DjangoQLHighlight.attachOverlay(textarea);
+// ... on a parse error reported by your endpoint:
+overlay.setErrorAt(err.line, err.column);
+```
+
+![Syntax error highlighted in the query box](img/demo-error.png)
+
+`DjangoQLHighlight.offsetFromLineColumn(text, line, column)` is also exported if
+you need the raw character offset.
+
 ### Colours are overridable
 
 `highlight.css` carries **structural** rules (the overlay layout) plus a
@@ -90,6 +111,6 @@ above.
 
 !!! note "Editor choice is yours"
     The library gives you a tokenizer and an optional overlay. Whether to use
-    the overlay, restyle it, or drive a full editor like CodeMirror 6 from
-    `tokenize()` is the integrator's decision. The `example_project/` shows both
-    the restyled overlay and a CodeMirror 6 integration built on the tokenizer.
+    the overlay, restyle it, or drive your own editor from `tokenize()` is the
+    integrator's decision. The `example_project/` shows the restyled overlay
+    alongside the completion widget.

@@ -13,6 +13,8 @@ This is the **on-demand** sibling of the
 fires automatically (and only) when a search returns zero rows, while the
 breakdown here runs whenever you ask for it, for *any* query, empty or not.
 
+![Per-branch counts for an empty result](img/demo-explain.png)
+
 ## Library primitive: `explain`
 
 ```python

@@ -5,12 +5,13 @@
 <section class="panel">
   <h1>Search the library</h1>
   <p class="hint">
-    Type a DjangoQL query. <kbd>Enter</kbd> runs it; <kbd>Shift</kbd>+<kbd>Enter</kbd>
-    adds a newline. The colours come from the library's overlay (restyled here).
+    Type a DjangoQL query — field and value names auto-complete as you type.
+    <kbd>Enter</kbd> runs it; <kbd>Shift</kbd>+<kbd>Enter</kbd> adds a newline.
+    The colours come from the library's overlay (restyled here).
   </p>
 
   <form id="search-form">
-    <textarea id="q" class="djangoql djangoql-highlight" rows="3"
+    <textarea id="q" class="djangoql" rows="3"
       spellcheck="false" autocomplete="off"
       placeholder='e.g. rating > 4.5 and author.country.name = "Poland"'></textarea>
     <div class="toolbar">
@@ -54,8 +55,24 @@
 </section>
 {% endblock %}
 
+{% block head %}
+  <link rel="stylesheet" href="{% static 'djangoql/css/completion.css' %}">
+{% endblock %}
+
 {% block scripts %}
+  <script src="{% static 'djangoql/js/completion.js' %}"></script>
   <script src="{% static 'djangoql/js/multiline.js' %}"></script>
   <script src="{% static 'djangoql/js/highlight.js' %}"></script>
   <script src="{% static 'library/js/demo.js' %}"></script>
+  <script>
+    // Field/value auto-completion. Introspections are embedded by the view.
+    DjangoQL.DOMReady(function () {
+      new DjangoQL({
+        introspections: {{ introspections|safe }},
+        selector: 'textarea#q',
+        syntaxHelp: null,
+        autoResize: false
+      });
+    });
+  </script>
 {% endblock %}

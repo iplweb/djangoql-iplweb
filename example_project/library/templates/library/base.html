@@ -7,13 +7,13 @@
   <title>DjangoQL — Query UX showcase{% block title %}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'djangoql/css/highlight.css' %}">
   <link rel="stylesheet" href="{% static 'library/css/demo.css' %}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header class="topbar">
     <div class="brand">DjangoQL <span>· Query UX showcase</span></div>
     <nav>
-      <a href="{% url 'demo' %}">Overlay demo</a>
-      <a href="{% url 'demo-codemirror' %}">CodeMirror 6</a>
+      <a href="{% url 'demo' %}">Search demo</a>
       <a href="/admin/">Admin</a>
     </nav>
   </header>
@@ -21,9 +21,9 @@
     {% block content %}{% endblock %}
   </main>
   <footer>
-    Lightweight overlay + tokenizer ship with DjangoQL. The colours, layout and
-    CodeMirror integration on this page are the example project's own choices —
-    the library imposes none of them.
+    The completion widget, lightweight highlight overlay and tokenizer ship with
+    DjangoQL. The colours and layout on this page are the example project's own
+    choices — the library imposes none of them.
   </footer>
   {% block scripts %}{% endblock %}
 </body>

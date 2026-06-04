@@ -102,10 +102,29 @@ uv run python manage.py createsuperuser    # optional, for the admin
 uv run python manage.py runserver
 ```
 
-Then open <http://127.0.0.1:8000/> (overlay demo — multi-line, highlighting,
-Format, Explain counts), <http://127.0.0.1:8000/codemirror/> (CodeMirror 6
-driven by the tokenizer), or <http://127.0.0.1:8000/admin/> (admin with
-completion + multi-line + the highlight overlay).
+Then open <http://127.0.0.1:8000/> (search demo — auto-completion, multi-line,
+highlighting, Format, Explain counts) or <http://127.0.0.1:8000/admin/> (admin
+with completion + multi-line + the highlight overlay).
+
+### What it looks like
+
+Running a query — live syntax highlighting and results:
+
+![Search demo](docs/img/demo-search.png)
+
+The **Format** button re-indents a query (syntax highlighting throughout):
+
+![Formatted query](docs/img/demo-format.png)
+
+**Explain counts** breaks an empty result down per sub-expression, so you can see
+*where* the data runs out — here each side matches ~500 rows but their `and`
+matches none:
+
+![Per-branch counts for an empty result](docs/img/demo-explain.png)
+
+Syntax errors are pinpointed in the query box:
+
+![Syntax error highlighted](docs/img/demo-error.png)
 
 ## Supported by
 

@@ -1,8 +1,8 @@
 """Settings for the DjangoQL example project.
 
 A minimal, self-contained Django project that demonstrates the query-UX
-features: multi-line queries, pretty-print, per-branch record counts, and
-syntax highlighting (a restyled overlay and a CodeMirror 6 variant).
+features: auto-completion, multi-line queries, pretty-print, per-branch record
+counts, and syntax highlighting (a restyled overlay) with syntax-error marking.
 
 Run it:
 
