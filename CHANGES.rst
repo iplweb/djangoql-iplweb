@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+* The **"Unknown field" error** now suggests close matches for likely typos:
+  ``Unknown field: autho. Did you mean: author?``. Suggestions are matched
+  case-insensitively against every field name (including hidden derived fields,
+  so ``book__coun`` can point at ``book__count``); when nothing is close it
+  falls back to the full ``Possible choices`` list as before. The matching is
+  backed by a new overridable ``DjangoQLSchema.suggest_field_names()`` hook.
 * Add an **empty-result breakdown**: when a valid DjangoQL query returns zero
   rows, explain *where in the query the data runs out*. The new
   ``djangoql.breakdown.explain_empty(queryset, search, schema=None, *,
