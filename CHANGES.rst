@@ -1,3 +1,18 @@
+0.22.1 (2026-06-04)
+-------------------
+
+* Refine the **"Did you mean" field suggestions** so a clear match is no longer
+  diluted by unrelated fields that merely share a ``__suffix`` — e.g.
+  ``autorzy__cnt`` now suggests only ``autorzy__count``, not ``utworzono__month``.
+  Among candidates above the cutoff, only those within a small similarity margin
+  of the best match are kept. New ``suggest_cutoff`` / ``suggest_margin`` /
+  ``suggest_limit`` schema attributes tune the behavior.
+* **Translations:** complete and correct the catalogs for all eleven locales —
+  translate the messages introduced in 0.22.0 (the "Did you mean" hint, the
+  empty-result breakdown strings, the hidden derived-field hints) and fix a few
+  stale machine-merged strings (e.g. the numeric ``numbers`` type and the time
+  ``"HH:MM[:SS]"`` format/validation messages).
+
 0.22.0 (2026-06-04)
 -------------------
 
