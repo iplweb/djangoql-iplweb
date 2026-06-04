@@ -219,26 +219,9 @@ class CountFKTest(TestCase):
             )
 
 
-class _CountSchemaM2M(DjangoQLSchema):
-    def get_fields(self, model):
-        from djangoql.extras import CountField, _owner_lookup
-
-        fields = list(super().get_fields(model))
-        if model == User:
-            rel = User._meta.get_field('groups')  # ManyToManyField (forward)
-            fields.append(
-                CountField(
-                    model=User,
-                    relation_name='groups',
-                    related_model=rel.related_model,
-                    owner_lookup=_owner_lookup(rel),
-                    name='groups__count',
-                )
-            )
-        return fields
-
-
 class CountM2MTest(TestCase):
+    """Forward M2M relation count via ExtrasSchema (flat `groups__count`)."""
+
     def setUp(self):
         self.g1 = Group.objects.create(name='g1')
         self.g2 = Group.objects.create(name='g2')
@@ -247,7 +230,9 @@ class CountM2MTest(TestCase):
         self.loner = User.objects.create(username='loner')
 
     def _usernames(self, search):
-        qs = apply_search(User.objects.all(), search, schema=_CountSchemaM2M)
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(User.objects.all(), search, schema=ExtrasSchema)
         return set(qs.values_list('username', flat=True))
 
     def test_m2m_count_gt(self):
@@ -255,74 +240,6 @@ class CountM2MTest(TestCase):
 
     def test_m2m_count_zero(self):
         self.assertIn('loner', self._usernames('groups__count = 0'))
-
-
-class _AggSchema(DjangoQLSchema):
-    def get_fields(self, model):
-        from djangoql.extras import (
-            AvgField,
-            MaxField,
-            MinField,
-            SumField,
-            _owner_lookup,
-        )
-
-        fields = list(super().get_fields(model))
-        if model == User:
-            rel = User._meta.get_field('book')
-            common = dict(
-                model=User,
-                relation_name='book',
-                related_model=rel.related_model,
-                owner_lookup=_owner_lookup(rel),
-                source_field='rating',
-            )
-            fields += [
-                SumField(name='book__rating__sum', **common),
-                AvgField(name='book__rating__avg', **common),
-                MinField(name='book__rating__min', **common),
-                MaxField(name='book__rating__max', **common),
-            ]
-        return fields
-
-
-class AggregatesTest(TestCase):
-    def setUp(self):
-        self.u = User.objects.create(username='u')
-        Book.objects.create(name='a', author=self.u, rating=2.0)
-        Book.objects.create(name='b', author=self.u, rating=4.0)
-        self.v = User.objects.create(username='v')
-        Book.objects.create(name='c', author=self.v, rating=10.0)
-
-    def _usernames(self, search):
-        qs = apply_search(User.objects.all(), search, schema=_AggSchema)
-        return set(qs.values_list('username', flat=True))
-
-    def test_avg(self):
-        # u avg = 3.0, v avg = 10.0
-        self.assertEqual(self._usernames('book__rating__avg > 5'), {'v'})
-
-    def test_sum(self):
-        # u sum = 6.0, v sum = 10.0
-        self.assertEqual(self._usernames('book__rating__sum < 8'), {'u'})
-
-    def test_min_max(self):
-        self.assertEqual(self._usernames('book__rating__min >= 10'), {'v'})
-        self.assertEqual(self._usernames('book__rating__max <= 4'), {'u'})
-
-    def test_numeric_aggregate_none_validates(self):
-        # avg/sum/min/max return SQL NULL for an empty set, so "= None" is a
-        # valid, non-raising query (unlike count which is non-nullable).
-        from djangoql.parser import DjangoQLParser
-
-        ast = DjangoQLParser().parse('book__rating__avg = None')
-        _AggSchema(User).validate(ast)  # must not raise
-
-    def test_avg_none_matches_user_with_no_books(self):
-        User.objects.create(username='no_books')
-        result = self._usernames('book__rating__avg = None')
-        self.assertIn('no_books', result)
-        self.assertNotIn('u', result)
 
 
 class AutoAggregateTest(TestCase):
@@ -342,16 +259,18 @@ class AutoAggregateTest(TestCase):
         self.assertEqual(self._usernames('book__count = 2'), {'u'})
 
     def test_auto_numeric_aggregate(self):
-        self.assertEqual(self._usernames('book__price__sum >= 12'), {'u'})
+        self.assertEqual(self._usernames('book.price__sum >= 12'), {'u'})
 
     def test_pk_and_fk_excluded(self):
         from djangoql.extras import ExtrasSchema
 
         names = set(ExtrasSchema(User).models['auth.user'].keys())
-        self.assertIn('book__count', names)
+        self.assertIn('book__count', names)  # flat count kept (hidden)
+        # Numeric aggregates are no longer schema fields at all (synthesized on
+        # demand via dot syntax); pk/fk source exclusion is verified in
+        # DotAggregateTest.test_pk_and_fk_not_aggregatable.
+        self.assertNotIn('book__rating__sum', names)
         self.assertNotIn('book__id__sum', names)
-        self.assertNotIn('book__author__sum', names)
-        self.assertNotIn('book__object_id__sum', names)
 
     def test_multiple_aggregates_are_independent(self):
         # Two to-many aggregates in one query must not multiply each other.
@@ -402,6 +321,140 @@ class AutoAggregateTest(TestCase):
             schema=ExtrasSchema,
         )
         self.assertEqual(set(qs.values_list('name', flat=True)), {'g'})
+
+
+class DotAggregateTest(TestCase):
+    """Numeric aggregates use dot syntax: <relation>.<numfield>__<agg>."""
+
+    def setUp(self):
+        self.u = User.objects.create(username='u')
+        Book.objects.create(name='a', author=self.u, rating=2.0, price=5)
+        Book.objects.create(name='b', author=self.u, rating=4.0, price=7)
+        self.v = User.objects.create(username='v')
+        Book.objects.create(name='c', author=self.v, rating=10.0, price=20)
+
+    def _usernames(self, search):
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(User.objects.all(), search, schema=ExtrasSchema)
+        return set(qs.values_list('username', flat=True))
+
+    def test_dot_avg(self):
+        # u avg = 3.0, v avg = 10.0
+        self.assertEqual(self._usernames('book.rating__avg > 5'), {'v'})
+
+    def test_dot_sum(self):
+        # u sum = 6.0, v sum = 10.0
+        self.assertEqual(self._usernames('book.rating__sum < 8'), {'u'})
+
+    def test_dot_min_max(self):
+        self.assertEqual(self._usernames('book.rating__min >= 10'), {'v'})
+        self.assertEqual(self._usernames('book.rating__max <= 4'), {'u'})
+
+    def test_dot_price_sum_decimal_source(self):
+        self.assertEqual(self._usernames('book.price__sum >= 12'), {'u', 'v'})
+        self.assertEqual(self._usernames('book.price__sum > 15'), {'v'})
+
+    def test_dot_avg_none_validates(self):
+        # avg/sum/min/max return SQL NULL for an empty set, so "= None" is a
+        # valid, non-raising query.
+        from djangoql.extras import ExtrasSchema
+        from djangoql.parser import DjangoQLParser
+
+        ast = DjangoQLParser().parse('book.rating__avg = None')
+        ExtrasSchema(User).validate(ast)  # must not raise
+
+    def test_dot_avg_none_matches_user_with_no_books(self):
+        User.objects.create(username='no_books')
+        result = self._usernames('book.rating__avg = None')
+        self.assertIn('no_books', result)
+        self.assertNotIn('u', result)
+
+    def test_flat_numeric_aggregate_removed(self):
+        # The old flat form is gone; numeric aggregates must use dot syntax.
+        from djangoql.exceptions import DjangoQLSchemaError
+
+        with self.assertRaises(DjangoQLSchemaError):
+            self._usernames('book__rating__sum > 0')
+
+    def test_pk_and_fk_not_aggregatable(self):
+        from djangoql.exceptions import DjangoQLSchemaError
+
+        for bad in ('book.id__sum', 'book.author__sum', 'book.object_id__sum'):
+            with self.assertRaises(DjangoQLSchemaError):
+                self._usernames('%s > 0' % bad)
+
+    def test_nested_numeric_two_hops(self):
+        # Search Book: author.book.rating__sum = sum of ratings across the
+        # books written by this book's author.
+        from djangoql.extras import ExtrasSchema
+
+        qs = apply_search(
+            Book.objects.all(),
+            'author.book.rating__sum >= 6',
+            schema=ExtrasSchema,
+        )
+        # u's books a,b: 2+4=6; v's book c: 10 — all satisfy >= 6.
+        self.assertEqual(
+            set(qs.values_list('name', flat=True)), {'a', 'b', 'c'}
+        )
+
+
+class DerivedFieldsHiddenTest(TestCase):
+    """Derived fields stay usable but are hidden from autocomplete."""
+
+    def _serialized(self):
+        from djangoql.extras import ExtrasSchema
+
+        data = DjangoQLSchemaSerializer().serialize(ExtrasSchema(User))
+        return data['models']['auth.user']
+
+    def test_count_hidden_from_autocomplete(self):
+        self.assertNotIn('book__count', self._serialized())
+
+    def test_date_parts_hidden_from_autocomplete(self):
+        self.assertNotIn('date_joined__year', self._serialized())
+
+    def test_normal_fields_and_relations_still_suggested(self):
+        fields = self._serialized()
+        self.assertIn('username', fields)
+        self.assertIn('book', fields)  # the relation itself stays suggestable
+
+    def test_hidden_count_still_resolves(self):
+        from djangoql.extras import ExtrasSchema
+        from djangoql.parser import DjangoQLParser
+
+        ast = DjangoQLParser().parse('book__count = 0')
+        ExtrasSchema(User).validate(ast)  # must not raise
+
+
+class ErrorHintTest(TestCase):
+    """The 'Unknown field' error hides derived fields from the choice list and
+    points at the derived syntax instead."""
+
+    def _error_message(self, search):
+        from djangoql.exceptions import DjangoQLSchemaError
+        from djangoql.extras import ExtrasSchema
+
+        try:
+            apply_search(User.objects.all(), search, schema=ExtrasSchema)
+        except DjangoQLSchemaError as exc:
+            return str(exc)
+        self.fail('expected DjangoQLSchemaError')
+
+    def test_choices_exclude_hidden_derived_fields(self):
+        msg = self._error_message('nope = 1')
+        # Isolate the "Possible choices" list (before the hint sentence).
+        choices = msg.split('Relation aggregates')[0]
+        self.assertIn('username', choices)
+        self.assertNotIn('__count', choices)
+        self.assertNotIn('__year', choices)
+
+    def test_hint_mentions_aggregate_and_date_syntax(self):
+        msg = self._error_message('nope = 1')
+        self.assertIn('__count', msg)
+        self.assertIn('sum,avg,min,max', msg)
+        self.assertIn('__year', msg)
 
 
 class BackwardCompatTest(TestCase):

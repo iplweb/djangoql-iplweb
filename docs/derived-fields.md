@@ -9,11 +9,19 @@ There are two families:
 - **Date/time parts** — integer components extracted from a `DateField`, `DateTimeField`,
   or `TimeField` (year, month, day, hour, …), plus `__date` and `__time` extractors for
   `DateTimeField`.
-- **Relation aggregates** — `<rel>__count` and `<rel>__<numfield>__{sum,avg,min,max}`
-  for every to-many relation on the model.
+- **Relation aggregates** — `<rel>__count` for every to-many relation, plus
+  dot-addressed `<rel>.<numfield>__{sum,avg,min,max}` numeric aggregates.
 
 Both families are **opt-in**. The default `DjangoQLSchema` is unchanged; you enable them
 by switching to `ExtrasSchema` or by composing the individual mixins into your own schema.
+
+!!! note "Derived fields are hidden from autocomplete"
+    To keep the completion drop-down and the "Unknown field" error readable, all
+    derived fields are **hidden from autocomplete** (`suggested=False`) — there can be
+    a great many of them. They remain fully usable in queries; you just type them
+    yourself. When you reference a field that doesn't exist, the error message lists
+    the normal fields and adds a short hint describing the derived-field syntax with
+    a couple of real examples for that model.
 
 
 ## Enabling derived fields
@@ -143,30 +151,40 @@ the model: reverse foreign keys (one-to-many) and `ManyToManyField` (both direct
 | Aggregate | Field name | Meaning |
 |---|---|---|
 | Count | `<rel>__count` | number of related rows |
-| Sum | `<rel>__<numfield>__sum` | sum of a numeric field across related rows |
-| Average | `<rel>__<numfield>__avg` | average |
-| Minimum | `<rel>__<numfield>__min` | minimum value |
-| Maximum | `<rel>__<numfield>__max` | maximum value |
+| Sum | `<rel>.<numfield>__sum` | sum of a numeric field across related rows |
+| Average | `<rel>.<numfield>__avg` | average |
+| Minimum | `<rel>.<numfield>__min` | minimum value |
+| Maximum | `<rel>.<numfield>__max` | maximum value |
 
 `<rel>` is the same relation name that DjangoQL already uses for dot-navigation
 (e.g. `book`, or the value of `related_name`). `<numfield>` is the name of an
 `IntegerField`, `FloatField`, or `DecimalField` on the related model.
 
+!!! note "Count is flat, numeric aggregates use a dot"
+    Relation **count** keeps the flat name `<rel>__count`. The **numeric** aggregates
+    are addressed through the relation with a dot — `<rel>.<numfield>__sum` — which
+    reads consistently with the rest of DjangoQL's dot navigation and keeps the
+    field list from exploding. The old flat numeric form
+    (`<rel>__<numfield>__sum`) is **no longer accepted**.
+
 ### Examples
 
 ```
-# Count-based
+# Count-based (flat)
 book__count > 5
 book__count = 0
 
-# Numeric aggregates on Book's price and rating fields
-book__price__avg > 30
-book__price__sum >= 100
-book__rating__min > 3
-book__rating__max = 5
+# Numeric aggregates on Book's price and rating fields (dot syntax)
+book.price__avg > 30
+book.price__sum >= 100
+book.rating__min > 3
+book.rating__max = 5
 
 # Through a relation hop — author with more than one book
 author.book__count > 1
+
+# Numeric aggregate two hops out — sum of ratings of this book's author's books
+author.book.rating__sum >= 10
 ```
 
 ### Which relations and fields are included
@@ -228,7 +246,12 @@ keeping it fully usable in queries.
 This is different from `suggest_options` (which controls whether the widget suggests
 **values** for a field, not whether the field itself is listed).
 
-### Example: hiding a noisy aggregate from autocomplete
+All derived fields (relation count, date/time parts) ship with `suggested=False`, and
+numeric aggregates are never listed at all because they are synthesized on demand. So
+by default none of them appear in the completion widget. The example below applies the
+same flag to one of your own fields.
+
+### Example: hiding a noisy field from autocomplete
 
 ```python
 from djangoql.extras import AggregateSchemaMixin
@@ -238,10 +261,11 @@ from djangoql.schema import DjangoQLSchema, IntField
 class BookSchema(AggregateSchemaMixin, DjangoQLSchema):
     def get_fields(self, model):
         fields = super().get_fields(model)
-        # Hide tag__count from autocomplete; users can still type it manually.
+        # Derived fields are hidden by default; re-show one you use a lot so it
+        # appears in autocomplete again.
         for f in fields:
-            if getattr(f, 'name', None) == 'tag__count':
-                f.suggested = False
+            if getattr(f, 'name', None) == 'review__count':
+                f.suggested = True
         return fields
 ```
 
@@ -252,9 +276,9 @@ IntField(name='internal_score', suggested=False)
 ```
 
 The serializer (`DjangoQLSchemaSerializer`) skips any field where `suggested` is
-`False`, so it never appears in the widget's drop-down list. Because the default is
-`True`, all standard model fields and all generated derived fields remain visible unless
-you explicitly opt them out.
+`False`, so it never appears in the widget's drop-down list. Standard model fields
+default to `True` and remain visible; generated derived fields default to `False` and
+stay hidden (but fully queryable).
 
 
 ## Recipes
@@ -280,7 +304,7 @@ written__iso_week_day in (1, 2, 3, 4, 5)
 **Books where the average related-book price exceeds a threshold (via author):**
 
 ```
-author.book__price__avg > 30
+author.book.price__avg > 30
 ```
 
 **Records created in the first quarter:**

@@ -30,6 +30,7 @@ nav:
   - Language reference: language.md
   - Schema & custom fields: schema.md
   - Derived fields: derived-fields.md
+  - django-autocomplete-light: integrating-django-autocomplete-light.md
   - Empty-result breakdown: empty-result-breakdown.md
   - Outside the admin: queryset.md
   - Completion widget: completion-widget.md

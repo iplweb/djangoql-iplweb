@@ -12,6 +12,33 @@ Unreleased
   surfaces it automatically on empty results (lazy; disable with
   ``djangoql_explain_empty = False``, tune the cost guard with
   ``djangoql_explain_empty_max_nodes``).
+* Add pluggable **autocomplete value fields** in ``djangoql.extras``
+  (``AutocompleteField`` + ``AutocompleteSchemaMixin``). A field's value
+  suggestions can come from an arbitrary source — most usefully an existing
+  django-autocomplete-light endpoint — letting a user pick an object and filter
+  by its primary key. Suggestions are formatted ``"<label> [<id>]"`` and the
+  field filters ``<field> = pk`` (``=``, ``!=`` and ``in`` supported), with an
+  ``icontains`` free-text fallback over ``search_fields``. Three providers are
+  supported (priority high→low): a ``url`` (a DAL endpoint resolved and called
+  **in-process** with the current request), a ``queryset`` / callable, or a
+  subclass override. ``SuggestionsAPIView`` threads the current request into the
+  field via a non-breaking ``set_request`` hook. ``AutocompleteSchemaMixin`` is
+  also included in ``ExtrasSchema``. The change is server-side only (no
+  JavaScript changes), additive and non-breaking.
+* **Breaking (derived fields):** numeric relation aggregates now use dot
+  syntax — ``<rel>.<numfield>__{sum,avg,min,max}`` (e.g. ``book.rating__sum``)
+  instead of the flat ``<rel>__<numfield>__sum``. This reads consistently with
+  DjangoQL's dot navigation and stops the parent model's field list from
+  exploding. Relation **count** keeps its flat name ``<rel>__count``.
+* **Derived fields are hidden from autocomplete.** All generated derived fields
+  ship with ``suggested=False`` (relation count, date/time parts), and numeric
+  aggregates are synthesized on demand so they are never listed at all. They
+  remain fully usable in queries.
+* The **"Unknown field" error** no longer dumps the hidden derived fields into
+  its "Possible choices" list. It lists only the suggested fields and appends a
+  short hint describing the derived-field syntax with a couple of real examples
+  for the current model. New overridable schema hooks ``resolve_unknown()`` and
+  ``unknown_field_hint()`` back this behavior.
 
 0.21.0
 ------
