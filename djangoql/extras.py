@@ -657,8 +657,13 @@ class AutocompleteField(StrField):
     # -- lookup / filtering ------------------------------------------------
 
     def get_lookup_name(self):
-        # `<fk>__rel` (alt-nazwa pickera) filtruje realny FK podany w
-        # lookup_name; bez niego zachowanie = self.name (non-breaking).
+        """Return the ORM lookup name used for filtering.
+
+        When ``lookup_name`` is supplied (e.g. ``'author'`` for a picker
+        registered under the alternate name ``'author__rel'``), it is used
+        instead of ``self.name``, redirecting the filter to the real FK
+        column. Defaults to ``self.name`` (non-breaking).
+        """
         return self._lookup_name or self.name
 
     def get_lookup_value(self, value):

@@ -289,6 +289,13 @@ class RelAndPickerCoexistTest(TestCase):
         )
         self.assertEqual(sorted(b.pk for b in qs), [self.b1.pk, self.b2.pk])
 
+    def test_picker_not_equals_filters_by_pk(self):
+        qs = self._search('author__rel != "Jan Kowalski [%d]"' % self.kow.pk)
+        sql = str(qs.query)
+        self.assertIn('author_id', sql)
+        self.assertNotIn('author__rel', sql)
+        self.assertEqual(list(qs), [self.b2])
+
     def test_picker_free_text_fallback_targets_real_fk(self):
         qs = self._search('author__rel = "kowal"')
         sql = str(qs.query).lower()
