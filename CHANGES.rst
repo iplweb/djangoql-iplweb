@@ -1,3 +1,15 @@
+Unreleased
+----------
+
+* **Multi-line queries:** new ``djangoql/js/multiline.js`` lets users insert a
+  newline with **Shift+Enter** while plain **Enter** still submits. Loaded
+  automatically by ``DjangoQLSearchMixin`` in the admin; framework-agnostic and
+  reusable outside the admin (recognises ``textarea.djangoql`` /
+  ``textarea[data-djangoql]`` / ``textarea[name="q"]``, or call
+  ``DjangoQLMultiline.enable(el)``). It imposes no styling — the look of a
+  multi-line query box is the integrator's decision. New docs page
+  "Multi-line queries".
+
 0.23.0 (2026-06-04)
 -------------------
 

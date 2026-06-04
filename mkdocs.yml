@@ -28,6 +28,7 @@ nav:
   - Installation: installation.md
   - Django admin: admin.md
   - Language reference: language.md
+  - Multi-line queries: multiline-queries.md
   - Schema & custom fields: schema.md
   - Derived fields: derived-fields.md
   - django-autocomplete-light: integrating-django-autocomplete-light.md

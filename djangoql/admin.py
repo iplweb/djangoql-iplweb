@@ -165,6 +165,10 @@ class DjangoQLSearchMixin:
                 if not self.djangoql_completion_enabled_by_default:
                     js.append('djangoql/js/completion_admin_toggle_off.js')
             js.append('djangoql/js/completion_admin.js')
+            # Shift+Enter -> newline (Enter still submits). Loaded last so the
+            # admin textarea created by completion_admin.js already exists; the
+            # script itself is framework-agnostic and delegates on document.
+            js.append('djangoql/js/multiline.js')
             media += Media(
                 css={
                     '': (

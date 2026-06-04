@@ -327,6 +327,12 @@ class DjangoQLSearchFlowTest(TestCase):
                     'name = "alpha"',
                 )
 
+    def test_media_includes_multiline_script(self):
+        # Shift+Enter newline support ships as a small framework-agnostic JS
+        # file that the admin loads alongside the completion widget.
+        rendered = str(self.book_admin.media)
+        self.assertIn('djangoql/js/multiline.js', rendered)
+
     def test_media_includes_toggle_scripts(self):
         rendered = str(self.user_admin.media)
         self.assertIn('djangoql/js/completion_admin_toggle.js', rendered)
