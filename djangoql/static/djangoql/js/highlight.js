@@ -117,17 +117,26 @@
     return fallback;
   }
 
-  function renderHtml(text, errorOffset) {
+  function renderHtml(text, errStart, errEnd) {
     // XSS-safe: every token value is HTML-escaped, and t.type is always one of
     // the fixed PATTERNS labels (never user input), so the class name and the
     // markup are not attacker-controlled.
     var tokens = tokenize(text);
-    var errIndex = errorTokenIndex(tokens, errorOffset);
+    // Backward-compatible: renderHtml(text, offset) still flags the single
+    // token containing `offset`. renderHtml(text, start, end) flags the whole
+    // [start, end) character range — one or many tokens.
+    if (errEnd === undefined) {
+      var idx = errorTokenIndex(tokens, errStart);
+      errStart = idx >= 0 ? tokens[idx].start : -1;
+      errEnd = idx >= 0 ? tokens[idx].end : -1;
+    }
+    var marking = errStart >= 0 && errEnd > errStart;
     var html = '';
     for (var i = 0; i < tokens.length; i++) {
       var t = tokens[i];
       var cls = 'dql-tok-' + t.type;
-      if (i === errIndex) {
+      // Flag every token overlapping the error range (a continuous red block).
+      if (marking && t.end > errStart && t.start < errEnd) {
         cls += ' dql-tok-errormark';
       }
       html += '<span class="' + cls + '">' + escapeHtml(t.value) + '</span>';
@@ -196,10 +205,28 @@
     // integrator can still override it with the --dql-caret variable / CSS.
     textarea.style.caretColor = textColor;
 
-    var errorOffset = -1;
+    // The character range [errorStart, errorEnd) to flag, or -1/-1 for none.
+    var errorStart = -1;
+    var errorEnd = -1;
+
+    function clearMark() {
+      errorStart = -1;
+      errorEnd = -1;
+    }
+    function markToken(offset) {
+      // Flag just the token containing `offset` (or the nearest preceding one).
+      var tokens = tokenize(textarea.value);
+      var idx = errorTokenIndex(tokens, offset);
+      if (idx >= 0) {
+        errorStart = tokens[idx].start;
+        errorEnd = tokens[idx].end;
+      } else {
+        clearMark();
+      }
+    }
 
     function paint() {
-      code.innerHTML = renderHtml(textarea.value, errorOffset);
+      code.innerHTML = renderHtml(textarea.value, errorStart, errorEnd);
     }
     function syncScroll() {
       backdrop.scrollTop = textarea.scrollTop;
@@ -211,9 +238,14 @@
 
     // Editing invalidates any shown error marker.
     textarea.addEventListener('input', function () {
-      errorOffset = -1;
+      clearMark();
       paint();
     });
+    // Safety net: the completion widget can replace the value during a keydown
+    // (accepting a suggestion via Enter/Tab) without firing 'input', which would
+    // leave the inserted text unpainted — i.e. transparent. Repaint on keyup so
+    // the freshly inserted text is always coloured.
+    textarea.addEventListener('keyup', paint);
     textarea.addEventListener('scroll', syncScroll);
     window.addEventListener('resize', function () {
       syncStyles(textarea, backdrop);
@@ -222,15 +254,23 @@
     return {
       repaint: paint,
       backdrop: backdrop,
-      // Mark the token at a 0-based character offset as the error location.
-      setError: function (offset) { errorOffset = offset; paint(); },
-      // Mark the error from a 1-based (line, column) as carried by DjangoQL
-      // parse/lex errors.
+      // Mark the single token containing a 0-based character offset.
+      setError: function (offset) { markToken(offset); paint(); },
+      // Mark the single token at a 1-based (line, column), as carried by
+      // DjangoQL parse/lex errors.
       setErrorAt: function (line, column) {
-        errorOffset = offsetFromLineColumn(textarea.value, line, column);
+        markToken(offsetFromLineColumn(textarea.value, line, column));
         paint();
       },
-      clearError: function () { errorOffset = -1; paint(); },
+      // Mark everything from a 1-based (line, column) to the end of the text.
+      // For "Line N, col C: Syntax error at X" this paints the whole broken
+      // tail: the query parsed up to C, the rest did not.
+      setErrorFrom: function (line, column) {
+        errorStart = offsetFromLineColumn(textarea.value, line, column);
+        errorEnd = textarea.value.length;
+        paint();
+      },
+      clearError: function () { clearMark(); paint(); },
     };
   }
 
