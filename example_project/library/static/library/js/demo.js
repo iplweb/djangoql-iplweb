@@ -18,6 +18,72 @@
     ? DjangoQLHighlight.attachOverlay(textarea)
     : null;
 
+  // --- Anchor the suggestion popup at the caret --------------------------
+  // The bundled widget positions its popup at the textarea's bottom-left; with
+  // this demo's tall multi-line box that lands far below the caret. Re-anchor
+  // it just under the caret. Scoped to this page — the admin doesn't load this
+  // script, so its (single-line) box keeps the default placement.
+  var MIRROR_PROPS = [
+    'boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom',
+    'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth',
+    'borderLeftWidth', 'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch',
+    'fontSize', 'lineHeight', 'fontFamily', 'textAlign', 'textTransform',
+    'textIndent', 'letterSpacing', 'wordSpacing', 'tabSize'
+  ];
+
+  function caretCoordinates(el) {
+    var cs = window.getComputedStyle(el);
+    var mirror = document.createElement('div');
+    var s = mirror.style;
+    s.position = 'absolute';
+    s.visibility = 'hidden';
+    s.whiteSpace = 'pre-wrap';
+    s.overflowWrap = 'break-word';
+    s.overflow = 'hidden';
+    for (var i = 0; i < MIRROR_PROPS.length; i++) {
+      s[MIRROR_PROPS[i]] = cs[MIRROR_PROPS[i]];
+    }
+    var rect = el.getBoundingClientRect();
+    s.left = (window.pageXOffset + rect.left) + 'px';
+    s.top = (window.pageYOffset + rect.top) + 'px';
+    mirror.textContent = el.value.slice(0, el.selectionStart);
+    var marker = document.createElement('span');
+    marker.textContent = el.value.slice(el.selectionStart) || '.';
+    mirror.appendChild(marker);
+    document.body.appendChild(mirror);
+    // offsetLeft/Top are measured from the mirror's padding edge, so add the
+    // textarea's border widths back to get the caret relative to its outer box.
+    var bl = parseFloat(cs.borderLeftWidth) || 0;
+    var bt = parseFloat(cs.borderTopWidth) || 0;
+    var x = window.pageXOffset + rect.left + bl + marker.offsetLeft - el.scrollLeft;
+    var y = window.pageYOffset + rect.top + bt + marker.offsetTop - el.scrollTop;
+    var lineHeight = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
+    document.body.removeChild(mirror);
+    return { x: x, y: y, lineHeight: lineHeight };
+  }
+
+  function positionPopupAtCaret(ta, popup) {
+    if (!ta || !popup) { return; }
+    var c = caretCoordinates(ta);
+    var left = c.x + 2;  // a hair right of the caret
+    var docEl = document.documentElement;
+    var maxLeft = window.pageXOffset + docEl.clientWidth - popup.offsetWidth - 8;
+    if (left > maxLeft) { left = Math.max(window.pageXOffset + 8, maxLeft); }
+    popup.style.left = left + 'px';
+    popup.style.top = (c.y + c.lineHeight) + 'px';
+  }
+
+  if (window.DjangoQL && DjangoQL.prototype && !DjangoQL.prototype._demoCaret) {
+    var _renderCompletion = DjangoQL.prototype.renderCompletion;
+    DjangoQL.prototype.renderCompletion = function () {
+      _renderCompletion.apply(this, arguments);
+      if (this.completion && this.completion.style.display === 'block') {
+        positionPopupAtCaret(this.textarea, this.completion);
+      }
+    };
+    DjangoQL.prototype._demoCaret = true;
+  }
+
   function clearError() {
     errorEl.hidden = true;
     if (overlay) { overlay.clearError(); }
@@ -30,7 +96,13 @@
     errorEl.textContent = msg;
     errorEl.hidden = false;
     if (overlay && data && data.line && data.column) {
-      overlay.setErrorAt(data.line, data.column);
+      if (data.mark === 'token') {
+        // Unknown field etc.: flag just that token.
+        overlay.setErrorAt(data.line, data.column);
+      } else {
+        // Syntax error: paint the whole broken tail from the error column.
+        overlay.setErrorFrom(data.line, data.column);
+      }
     }
   }
 
@@ -69,6 +141,13 @@
         });
         resultsBody.appendChild(tr);
       });
+      // When a valid query matches nothing, auto-open the per-branch breakdown
+      // so it's obvious *where* the zero comes from.
+      if (res.data.total === 0 && textarea.value.trim()) {
+        explain();
+      } else {
+        explainPanel.hidden = true;
+      }
     });
   }
 

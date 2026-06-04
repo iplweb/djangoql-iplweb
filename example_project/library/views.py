@@ -11,6 +11,7 @@ simple. Do not copy that into a real project.
 """
 
 import json
+import re
 
 from django.core.exceptions import FieldError, ValidationError
 from django.http import JsonResponse
@@ -21,10 +22,10 @@ from djangoql.breakdown import explain
 from djangoql.exceptions import DjangoQLError
 from djangoql.formatter import format_query
 from djangoql.queryset import apply_search
-from djangoql.schema import DjangoQLSchema
 from djangoql.serializers import DjangoQLSchemaSerializer
 
 from .models import Book
+from .schema import BookSchema
 
 
 QUERY_ERRORS = (DjangoQLError, ValueError, FieldError, ValidationError)
@@ -42,7 +43,7 @@ EXAMPLES = [
 def index(request):
     # Introspections power the completion widget (field/value auto-completion).
     # Embedded inline so the page needs no extra request.
-    introspections = DjangoQLSchemaSerializer().serialize(DjangoQLSchema(Book))
+    introspections = DjangoQLSchemaSerializer().serialize(BookSchema(Book))
     return render(
         request,
         'library/demo.html',
@@ -59,16 +60,46 @@ def _query(request):
     return request.GET.get('q', '')
 
 
-def _error_response(exc):
-    """JSON error including the 1-based (line, column) when the exception
-    carries one (DjangoQL parse/lex errors do), so the front-end can mark the
-    spot in the query box."""
+def _locate(query, needle):
+    """1-based (line, column) of ``needle`` in ``query``, or (None, None).
+
+    A word-boundary match is preferred so ``rating`` doesn't match inside
+    ``ratings``; falls back to a plain substring search.
+    """
+    match = re.search(r'(?<![\w.])' + re.escape(needle) + r'(?![\w])', query)
+    pos = match.start() if match else query.find(needle)
+    if pos < 0:
+        return None, None
+    line = query.count('\n', 0, pos) + 1
+    # rfind == -1 (no newline before) yields a 1-based column of pos + 1.
+    column = pos - query.rfind('\n', 0, pos)
+    return line, column
+
+
+def _error_response(exc, query=''):
+    """JSON error with a 1-based (line, column) so the front-end can mark the
+    spot in the query box.
+
+    Parse/lex errors carry the position directly. Schema errors (e.g. "unknown
+    field") don't, but they carry the offending name, which we locate in the
+    query. ``mark`` tells the front-end whether to flag just that token
+    (``"token"``) or the whole broken tail from there (``"to_end"``, default).
+    """
     payload = {'error': str(exc)}
     line = getattr(exc, 'line', None)
     column = getattr(exc, 'column', None)
+    mark = 'to_end'
+    if not (line and column):
+        value = getattr(exc, 'value', None)
+        # str() so booleans/numbers locate too ("True", "5"); skip None/empty.
+        needle = '' if value is None else str(value)
+        if needle:
+            line, column = _locate(query, needle)
+            mark = 'token'
     if line and column:
         payload['line'] = line
         payload['column'] = column
+        payload['mark'] = mark
     return JsonResponse(payload, status=400)
 
 
@@ -80,7 +111,7 @@ def api_format(request):
     try:
         return JsonResponse({'formatted': format_query(query)})
     except DjangoQLError as e:
-        return _error_response(e)
+        return _error_response(e, query)
 
 
 @csrf_exempt
@@ -89,9 +120,9 @@ def api_explain(request):
     if not query.strip():
         return JsonResponse({'tree': None})
     try:
-        tree = explain(Book.objects.all(), query)
+        tree = explain(Book.objects.all(), query, BookSchema)
     except QUERY_ERRORS as e:
-        return _error_response(e)
+        return _error_response(e, query)
     return JsonResponse({'tree': tree})
 
 
@@ -101,9 +132,9 @@ def api_search(request):
     qs = Book.objects.all().select_related('author', 'publisher')
     if query.strip():
         try:
-            qs = apply_search(qs, query)
+            qs = apply_search(qs, query, BookSchema)
         except QUERY_ERRORS as e:
-            return _error_response(e)
+            return _error_response(e, query)
     total = qs.count()
     rows = [
         {

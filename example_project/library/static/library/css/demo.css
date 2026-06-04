@@ -68,7 +68,12 @@ kbd {
   border-radius: 6px; padding: 1px 6px; font-size: 12px;
 }
 
-/* Query box: the overlay wrapper gets a card look. */
+/* Query box. The highlight overlay paints coloured tokens on a backdrop *behind*
+   the textarea, so the textarea itself must be transparent for them to show.
+   `#q` is an ID (specificity 1,0,0) and would otherwise outrank the library's
+   `.dql-highlight-input` transparency, hiding the whole backdrop — so re-assert
+   transparency at ID specificity and move the dark box background to the
+   backdrop (see the recolour block below). */
 .dql-highlight { margin-bottom: 14px; }
 #q {
   width: 100%;
@@ -80,6 +85,11 @@ kbd {
   border: 1px solid rgba(124, 92, 255, 0.5);
   border-radius: 12px;
   outline: none;
+}
+/* When the overlay is active, let the coloured backdrop show through. */
+#q.dql-highlight-input {
+  color: transparent;
+  background: transparent;
 }
 #q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.25); }
 
@@ -144,6 +154,9 @@ footer {
 
 /* ---- Recolour the DjangoQL overlay via its CSS variables -------------- */
 .dql-highlight-backdrop {
+  /* Holds the dark box background now that #q is transparent. */
+  background: #0b0e22;
+  border-radius: 12px;
   --dql-name: #8be9fd;
   --dql-operator: #ff79c6;
   --dql-logical: #ffb454;
@@ -162,3 +175,23 @@ footer {
   color: #fff;
   text-decoration-thickness: 2px;
 }
+
+/* ---- Restyle the completion popup for this dark theme ----------------- */
+/* completion.css defaults target the light admin (white box, no text colour),
+   so on this page its items would render in our light --ink on white = nearly
+   invisible. base.html loads completion.css *before* demo.css so these win. */
+.djangoql-completion {
+  margin-top: 6px;
+  background: var(--panel-2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  z-index: 50;
+}
+.djangoql-completion ul { max-height: 280px; }
+.djangoql-completion li { color: var(--ink); padding: 6px 12px; }
+.djangoql-completion li:hover { background: rgba(124, 92, 255, 0.18); color: var(--ink); }
+.djangoql-completion .active { background: var(--accent); color: #fff; }
+.djangoql-completion li i { color: var(--muted); }
+.djangoql-completion .syntax-help { border-top-color: rgba(255, 255, 255, 0.12); }

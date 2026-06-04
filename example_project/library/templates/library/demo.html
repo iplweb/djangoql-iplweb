@@ -7,7 +7,10 @@
   <p class="hint">
     Type a DjangoQL query — field and value names auto-complete as you type.
     <kbd>Enter</kbd> runs it; <kbd>Shift</kbd>+<kbd>Enter</kbd> adds a newline.
-    The colours come from the library's overlay (restyled here).
+    Relations use <strong>dots</strong>, not Django's <code>__</code>:
+    <code>author.country.name = "Poland"</code>. The <code>author__rel</code>
+    field is an object-picker — it suggests real authors as
+    <code>"Name [id]"</code> and filters by that record.
   </p>
 
   <form id="search-form">
@@ -55,9 +58,7 @@
 </section>
 {% endblock %}
 
-{% block head %}
-  <link rel="stylesheet" href="{% static 'djangoql/css/completion.css' %}">
-{% endblock %}
+{% block head %}{% endblock %}
 
 {% block scripts %}
   <script src="{% static 'djangoql/js/completion.js' %}"></script>
@@ -71,7 +72,19 @@
         introspections: {{ introspections|safe }},
         selector: 'textarea#q',
         syntaxHelp: null,
-        autoResize: false
+        autoResize: false,
+        // Enter runs the AJAX search. Without this the widget falls back to
+        // form.submit(), which bypasses our submit handler and reloads the page.
+        onSubmit: function () {
+          var form = document.getElementById('search-form');
+          if (form.requestSubmit) {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(
+              new Event('submit', { cancelable: true, bubbles: true })
+            );
+          }
+        }
       });
     });
   </script>

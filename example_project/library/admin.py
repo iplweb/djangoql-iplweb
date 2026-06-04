@@ -3,12 +3,15 @@ from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 
 from .models import Author, Book, Country, Genre, Publisher
+from .schema import BookSchema
 
 
 @admin.register(Book)
 class BookAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
     # Turn on the (opt-in) syntax-highlighting overlay in the admin search box.
     djangoql_highlight = True
+    # Expose `author` as both a relation and the `author__rel` object-picker.
+    djangoql_schema = BookSchema
     list_display = (
         'title',
         'author',
