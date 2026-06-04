@@ -45,6 +45,8 @@ class ParseIdTest(TestCase):
         )
 
     def test_parse_single_id(self):
+        self.assertEqual(self.field.parse_id('Jan Kowalski #42'), 42)
+        # Legacy [id] form is still accepted.
         self.assertEqual(self.field.parse_id('Jan Kowalski [42]'), 42)
 
     def test_parse_id_list(self):
@@ -77,7 +79,7 @@ class QuerysetProviderTest(TestCase):
             label=lambda u: u.username,
         )
         options = list(field.get_options('kow'))
-        self.assertEqual(options, ['Jan Kowalski [%d]' % self.kow.pk])
+        self.assertEqual(options, ['Jan Kowalski #%d' % self.kow.pk])
 
     def test_get_options_respects_limit(self):
         for i in range(5):
@@ -100,7 +102,7 @@ class QuerysetProviderTest(TestCase):
             label=lambda u: u.username,
         )
         options = list(field.get_options('Jan Kowalski [%d]' % self.kow.pk))
-        self.assertEqual(options, ['Jan Kowalski [%d]' % self.kow.pk])
+        self.assertEqual(options, ['Jan Kowalski #%d' % self.kow.pk])
 
 
 class QueryByPkTest(TestCase):
@@ -159,7 +161,7 @@ class UrlProviderTest(TestCase):
         )
         field.set_request(request)
         options = list(field.get_options('kow'))
-        self.assertEqual(options, ['Jan Kowalski [%d]' % self.kow.pk])
+        self.assertEqual(options, ['Jan Kowalski #%d' % self.kow.pk])
 
     def test_url_provider_query_filters_by_pk(self):
         qs = apply_search(
@@ -183,7 +185,7 @@ class UrlProviderTest(TestCase):
         field.set_request(request)
         # get_options overrides q with its own search term; the view sees that.
         options = list(field.get_options('kow'))
-        self.assertEqual(options, ['Jan Kowalski [%d]' % self.kow.pk])
+        self.assertEqual(options, ['Jan Kowalski #%d' % self.kow.pk])
         # And the bound request's GET param is what the view reads as 'q':
         self.assertEqual(request.GET.get('q'), 'kow')
 
@@ -276,7 +278,7 @@ class RelAndPickerCoexistTest(TestCase):
         return apply_search(Book.objects.all(), q, schema=RelAndPickerSchema)
 
     def test_picker_filters_real_fk_by_pk(self):
-        qs = self._search('author__rel = "Jan Kowalski [%d]"' % self.kow.pk)
+        qs = self._search('author__rel = "Jan Kowalski #%d"' % self.kow.pk)
         sql = str(qs.query)
         self.assertIn('author_id', sql)
         self.assertNotIn('author__rel', sql)

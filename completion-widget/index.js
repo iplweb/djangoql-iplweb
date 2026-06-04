@@ -27,4 +27,23 @@ DjangoQL.prototype.selectCompletion = function () {
   }
 };
 
+// Object-picker value suggestions arrive as "Label #<id>" (the id is the filter
+// key). Render that trailing " #<id>" as a muted, display-only part so it reads
+// as metadata, not a count — the inserted value (s.text) keeps the id, so pk
+// filtering is unaffected.
+var populateFieldOptions = DjangoQL.prototype.populateFieldOptions;
+DjangoQL.prototype.populateFieldOptions = function () {
+  populateFieldOptions.apply(this, arguments);
+  var suggestions = this.suggestions || [];
+  for (var i = 0; i < suggestions.length; i++) {
+    var s = suggestions[i];
+    if (s && typeof s.suggestionText === 'string') {
+      var m = /^(.*\S)\s+(#\d+)$/.exec(s.suggestionText);
+      if (m) {
+        s.suggestionText = m[1] + ' <i>' + m[2] + '</i>';
+      }
+    }
+  }
+};
+
 window.DjangoQL = DjangoQL;

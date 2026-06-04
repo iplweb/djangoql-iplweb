@@ -21,9 +21,10 @@ from .exceptions import DjangoQLSchemaError
 from .schema import DateField, DjangoQLField, DjangoQLSchema, IntField, StrField
 
 
-#: Matches a trailing ``[<int>]`` token used to embed an object id in a
-#: suggestion string, e.g. ``"Jan Kowalski [42]"``.
-_ID_RE = re.compile(r'\s*\[(\d+)\]\s*$')
+#: Matches a trailing object-id token embedded in a suggestion string. Both
+#: ``"Jan Kowalski #42"`` (current) and ``"Jan Kowalski [42]"`` (legacy) are
+#: accepted, so previously-saved queries keep working.
+_ID_RE = re.compile(r'\s*(?:#(\d+)|\[(\d+)\])\s*$')
 
 
 class DatePartField(IntField):
@@ -495,9 +496,10 @@ class AutocompleteField(StrField):
     A value field whose suggestions come from a pluggable provider, and which
     filters by the embedded object id rather than by a string column.
 
-    Suggestions are formatted ``"<label> [<id>]"``; ``get_lookup_value`` parses
-    the trailing ``[<int>]`` back to a primary key and the field filters
-    ``<name> = pk``. Typically used to expose a ForeignKey as a *picker*: under
+    Suggestions are formatted ``"<label> #<id>"``; ``get_lookup_value`` parses
+    the trailing ``#<int>`` (legacy ``[<int>]`` is still accepted) back to a
+    primary key and the field filters ``<name> = pk``. Typically used to expose
+    a ForeignKey as a *picker*: under
     this field name you filter by the related object, you do not traverse into
     the related model's own fields.
 
@@ -566,18 +568,19 @@ class AutocompleteField(StrField):
 
     def parse_id(self, value):
         """
-        Parse a trailing ``[<int>]`` id out of a suggestion string.
+        Parse a trailing ``#<int>`` id out of a suggestion string (the legacy
+        ``[<int>]`` form is also accepted).
 
-        - ``"X [42]"`` -> ``42``
-        - ``["A [1]", "B [2]"]`` -> ``[1, 2]``
-        - ``"plain"`` (no bracket) -> ``"plain"`` (free-text fallback)
+        - ``"X #42"`` -> ``42``
+        - ``["A #1", "B #2"]`` -> ``[1, 2]``
+        - ``"plain"`` (no id) -> ``"plain"`` (free-text fallback)
         """
         if isinstance(value, list):
             return [self.parse_id(v) for v in value]
         if isinstance(value, str):
             match = _ID_RE.search(value)
             if match:
-                return int(match.group(1))
+                return int(match.group(1) or match.group(2))
         return value
 
     # -- suggestion options ------------------------------------------------
@@ -614,7 +617,7 @@ class AutocompleteField(StrField):
         return q
 
     def get_options(self, search):
-        # Strip a trailing "[id]" so re-editing "Label [42]" searches by Label.
+        # Strip a trailing "#id" so re-editing "Label #42" searches by Label.
         match = _ID_RE.search(search or '')
         if match:
             search = (search or '')[: match.start()]
@@ -622,7 +625,7 @@ class AutocompleteField(StrField):
             return self._options_from_url(search)
         objects = list(self.get_queryset(search)[: self.limit])
         return [
-            f'{self.format_label(obj)} [{self.get_id(obj)}]' for obj in objects
+            f'{self.format_label(obj)} #{self.get_id(obj)}' for obj in objects
         ]
 
     def _options_from_url(self, search):
@@ -637,7 +640,7 @@ class AutocompleteField(StrField):
         data = json.loads(response.content)
         results = data.get('results', [])
         return [
-            f'{strip_tags(str(item.get("text", "")))} [{item.get("id")}]'
+            f'{strip_tags(str(item.get("text", "")))} #{item.get("id")}'
             for item in results[: self.limit]
         ]
 
