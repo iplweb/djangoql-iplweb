@@ -27,6 +27,9 @@ class DjangoQLSchemaSerializer:
         }
         if isinstance(field, RelationField):
             result['relation'] = field.relation
+        if getattr(field, 'object_reference', False):
+            # Object-picker fields accept only = / != / in / not in.
+            result['object_reference'] = True
         return result
 
     def serialize_field_options(self, field):

@@ -522,6 +522,12 @@ class AutocompleteField(StrField):
 
     suggest_options = True
 
+    #: This field points at a related object (filtered by pk), so only equality
+    #: and membership are meaningful. Serialized to the front-end, which uses it
+    #: to offer just ``=  !=  in  not in`` (not the string operators a plain
+    #: ``str`` field would get).
+    object_reference = True
+
     def __init__(
         self,
         model=None,

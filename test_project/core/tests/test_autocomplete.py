@@ -214,6 +214,19 @@ class SchemaMixinTest(TestCase):
         self.assertNotIn('relation', author)
         self.assertIn('suggestions_api_url', data)
 
+    def test_serialized_field_marks_object_reference(self):
+        # The front-end uses this flag to offer only = / != / in / not in.
+        data = SuggestionsAPISerializer('/suggestions/').serialize(
+            QuerysetAutocompleteSchema(Book)
+        )
+        self.assertIs(
+            data['models']['core.book']['author']['object_reference'], True
+        )
+        # Plain fields don't get the flag.
+        self.assertNotIn(
+            'object_reference', data['models']['core.book']['name']
+        )
+
     def test_async_options_true(self):
         field = AutocompleteField(
             model=Book, name='author', search_fields=['username']

@@ -46,4 +46,33 @@ DjangoQL.prototype.populateFieldOptions = function () {
   }
 };
 
+// An object-picker field (object_reference) points at a related object, so only
+// equality and membership are meaningful. The widget treats it as a string
+// field (so the value is quoted) and would otherwise also offer ~ / !~ /
+// startswith / endswith — strip those, leaving "=  !=  in  not in".
+var generateSuggestions = DjangoQL.prototype.generateSuggestions;
+var REF_OPERATORS = { '=': 1, '!=': 1, in: 1, 'not in': 1 };
+DjangoQL.prototype.generateSuggestions = function () {
+  generateSuggestions.apply(this, arguments);
+  if (!this.completionEnabled || !this.currentModel || !this.textarea) {
+    return;
+  }
+  var textarea = this.textarea;
+  if (textarea.selectionStart !== textarea.selectionEnd) {
+    return;
+  }
+  var context = this.getContext(textarea.value, textarea.selectionStart);
+  if (context.scope !== 'comparison') {
+    return;
+  }
+  var model = this.models[context.model];
+  var field = model && context.field && model[context.field];
+  if (field && field.object_reference) {
+    this.suggestions = this.suggestions.filter(function (s) {
+      return REF_OPERATORS[s.text] === 1;
+    });
+    this.selected = this.suggestions.length === 1 ? 0 : null;
+  }
+};
+
 window.DjangoQL = DjangoQL;
