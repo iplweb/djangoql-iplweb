@@ -1,5 +1,8 @@
+import json
+import re
 from datetime import datetime
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
@@ -9,10 +12,18 @@ from django.db.models import IntegerField as ORMIntegerField
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.fields.related import ForeignObjectRel
 from django.db.models.functions import Coalesce
+from django.urls import resolve, reverse
+from django.urls.exceptions import NoReverseMatch
+from django.utils.html import strip_tags
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import DjangoQLSchemaError
-from .schema import DateField, DjangoQLField, DjangoQLSchema, IntField
+from .schema import DateField, DjangoQLField, DjangoQLSchema, IntField, StrField
+
+
+#: Matches a trailing ``[<int>]`` token used to embed an object id in a
+#: suggestion string, e.g. ``"Jan Kowalski [42]"``.
+_ID_RE = re.compile(r'\s*\[(\d+)\]\s*$')
 
 
 class DatePartField(IntField):
@@ -479,5 +490,274 @@ class DatePartsSchemaMixin:
         return hint
 
 
-class ExtrasSchema(DatePartsSchemaMixin, AggregateSchemaMixin, DjangoQLSchema):
+class AutocompleteField(StrField):
+    """
+    A value field whose suggestions come from a pluggable provider, and which
+    filters by the embedded object id rather than by a string column.
+
+    Suggestions are formatted ``"<label> [<id>]"``; ``get_lookup_value`` parses
+    the trailing ``[<int>]`` back to a primary key and the field filters
+    ``<name> = pk``. Typically used to expose a ForeignKey as a *picker*: under
+    this field name you filter by the related object, you do not traverse into
+    the related model's own fields.
+
+    Three providers supply suggestions (priority high -> low):
+
+    1. ``url`` -- an existing autocomplete endpoint (a url name or local path).
+       It is resolved and called *in-process* with the current request, whose
+       ``GET[search_param]`` is set to the search term. The endpoint must return
+       Select2 JSON: ``{"results": [{"id": .., "text": ..}], ...}``.
+    2. ``queryset`` / ``get_queryset`` -- a queryset or a ``search -> queryset``
+       callable (DAL-agnostic, full control).
+    3. a subclass override of :meth:`get_options` / :meth:`format_label` /
+       :meth:`get_id`.
+
+    Config kwargs: ``url``, ``queryset``/``get_queryset``, ``search_fields``,
+    ``view``, ``label`` (callable obj->str, default ``str``), ``id_of``
+    (callable obj->id, default ``obj.pk``), ``search_param`` (default ``'q'``),
+    ``limit`` (default 50).
+    """
+
+    suggest_options = True
+
+    def __init__(
+        self,
+        model=None,
+        name=None,
+        nullable=None,
+        suggested=None,
+        url=None,
+        queryset=None,
+        get_queryset=None,
+        search_fields=None,
+        view=None,
+        label=None,
+        id_of=None,
+        search_param='q',
+        limit=50,
+    ):
+        super().__init__(
+            model=model,
+            name=name,
+            nullable=nullable,
+            suggest_options=True,
+            suggested=suggested,
+        )
+        self.url = url
+        self.queryset = queryset
+        self._get_queryset = get_queryset
+        self.search_fields = list(search_fields) if search_fields else []
+        self.view = view
+        self.label = label
+        self.id_of = id_of
+        self.search_param = search_param
+        self.limit = limit
+        self.request = None
+
+    # -- request threading -------------------------------------------------
+
+    def set_request(self, request):
+        """Receive the current request (called by ``SuggestionsAPIView``)."""
+        self.request = request
+
+    # -- id parsing --------------------------------------------------------
+
+    def parse_id(self, value):
+        """
+        Parse a trailing ``[<int>]`` id out of a suggestion string.
+
+        - ``"X [42]"`` -> ``42``
+        - ``["A [1]", "B [2]"]`` -> ``[1, 2]``
+        - ``"plain"`` (no bracket) -> ``"plain"`` (free-text fallback)
+        """
+        if isinstance(value, list):
+            return [self.parse_id(v) for v in value]
+        if isinstance(value, str):
+            match = _ID_RE.search(value)
+            if match:
+                return int(match.group(1))
+        return value
+
+    # -- suggestion options ------------------------------------------------
+
+    def format_label(self, obj):
+        if self.label is not None:
+            return str(self.label(obj))
+        return str(obj)
+
+    def get_id(self, obj):
+        if self.id_of is not None:
+            return self.id_of(obj)
+        return obj.pk
+
+    def get_queryset(self, search):
+        if self._get_queryset is not None:
+            return self._get_queryset(search)
+        if self.queryset is not None:
+            qs = self.queryset
+            if callable(qs):
+                qs = qs(search)
+            elif self.search_fields and search:
+                qs = qs.filter(self._search_fields_q(search))
+            return qs
+        raise NotImplementedError(
+            'AutocompleteField needs a url, a queryset/get_queryset, or a '
+            'get_options()/get_queryset() override to provide suggestions.'
+        )
+
+    def _search_fields_q(self, search):
+        q = Q()
+        for field in self.search_fields:
+            q |= Q(**{f'{field}__icontains': search})
+        return q
+
+    def get_options(self, search):
+        # Strip a trailing "[id]" so re-editing "Label [42]" searches by Label.
+        match = _ID_RE.search(search or '')
+        if match:
+            search = (search or '')[: match.start()]
+        if self.url:
+            return self._options_from_url(search)
+        objects = list(self.get_queryset(search)[: self.limit])
+        return [
+            f'{self.format_label(obj)} [{self.get_id(obj)}]' for obj in objects
+        ]
+
+    def _options_from_url(self, search):
+        url = self.url
+        try:
+            path = urlsplit(reverse(url)).path
+        except NoReverseMatch:
+            path = urlsplit(url).path
+        match = resolve(path)
+        request = self._clone_request(search)
+        response = match.func(request, *match.args, **match.kwargs)
+        data = json.loads(response.content)
+        results = data.get('results', [])
+        return [
+            f'{strip_tags(str(item.get("text", "")))} [{item.get("id")}]'
+            for item in results[: self.limit]
+        ]
+
+    def _clone_request(self, search):
+        request = self.request
+        if request is None:
+            from django.test import RequestFactory
+
+            request = RequestFactory().get('/')
+        # Shallow-clone the GET QueryDict with the search param overridden, so
+        # we don't mutate the live request shared with the rest of the view.
+        get = request.GET.copy()
+        get[self.search_param] = search
+        request.GET = get
+        return request
+
+    # -- lookup / filtering ------------------------------------------------
+
+    def get_lookup_value(self, value):
+        return self.parse_id(value)
+
+    def get_lookup(self, path, operator, value):
+        parsed = self.parse_id(value)
+        has_id = self._has_id(parsed)
+        if has_id:
+            search = LOOKUP_SEP.join(path + [self.get_lookup_name()])
+            op, invert = self.get_operator(operator)
+            q = Q(**{f'{search}{op}': parsed})
+            return ~q if invert else q
+        # Free-text fallback: icontains over search_fields (prefixed by path).
+        return self._free_text_lookup(path, operator, value)
+
+    @staticmethod
+    def _has_id(parsed):
+        if isinstance(parsed, list):
+            return bool(parsed) and all(isinstance(v, int) for v in parsed)
+        return isinstance(parsed, int)
+
+    def _free_text_lookup(self, path, operator, value):
+        # search_fields live on the *related* model, so they must be reached
+        # through this field's relation name, e.g. ``author__username`` for an
+        # ``author`` FK with ``search_fields=['username']``. Without configured
+        # search_fields, fall back to the field's own name (a plain string col).
+        if self.search_fields:
+            prefix = list(path) + [self.get_lookup_name()]
+            fields = self.search_fields
+        else:
+            prefix = list(path)
+            fields = [self.get_lookup_name()]
+        keys = [LOOKUP_SEP.join(prefix + [field]) for field in fields]
+
+        op, invert = self.get_operator(operator)
+        terms = value if isinstance(value, list) else [value]
+        q = Q()
+        for term in terms:
+            for key in keys:
+                q |= Q(**{f'{key}__icontains': term})
+        return ~q if invert else q
+
+    def validate(self, value):
+        if value is not None and not isinstance(value, str):
+            raise DjangoQLSchemaError(
+                _(
+                    'Field "{field}" expects a string value, but got {value}'
+                ).format(field=self.name, value=repr(value)),
+            )
+
+
+class AutocompleteSchemaMixin:
+    """
+    Schema mixin that turns configured fields into :class:`AutocompleteField`
+    pickers.
+
+    Declare an ``autocomplete`` map of ``{Model: {field_name: config}}`` where
+    each config is a dict of :class:`AutocompleteField` kwargs, an
+    ``AutocompleteField`` instance, or a callable ``(model, field_name) ->
+    AutocompleteField``::
+
+        class RecordSchema(AutocompleteSchemaMixin, DjangoQLSchema):
+            autocomplete = {
+                Record: {
+                    'autor': {'url': 'autocomplete-autor',
+                              'search_fields': ['last_name']},
+                },
+            }
+    """
+
+    autocomplete = {}
+
+    def get_field_instance(self, model, field_name):
+        config = self.autocomplete.get(model, {})
+        if field_name in config:
+            return self._build_autocomplete_field(
+                model, field_name, config[field_name]
+            )
+        return super().get_field_instance(model, field_name)
+
+    def _build_autocomplete_field(self, model, field_name, config):
+        try:
+            db_field = model._meta.get_field(field_name)
+            nullable = getattr(db_field, 'null', False)
+        except Exception:
+            nullable = False
+        if isinstance(config, AutocompleteField):
+            field = config
+        elif callable(config):
+            field = config(model, field_name)
+        else:
+            field = AutocompleteField(**config)
+        if field.model is None:
+            field.model = model
+        if field.name is None:
+            field.name = field_name
+        if not field.nullable and nullable:
+            field.nullable = nullable
+        return field
+
+
+class ExtrasSchema(
+    DatePartsSchemaMixin,
+    AggregateSchemaMixin,
+    AutocompleteSchemaMixin,
+    DjangoQLSchema,
+):
     """Opt-in schema with date/time parts and relation aggregates enabled."""
