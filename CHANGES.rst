@@ -1,6 +1,13 @@
 Unreleased
 ----------
 
+* **Example project:** new runnable ``example_project/`` demonstrating all of
+  the above on a richly related dataset (books → authors → countries,
+  publishers, genres) with a ``seed_demo`` management command. It includes a
+  restyled overlay demo page, a CodeMirror 6 page driven by
+  ``DjangoQLHighlight.tokenize()``, standalone ``format``/``explain``/``search``
+  endpoints, and an admin with completion + multi-line + the opt-in highlight
+  overlay. New docs page "Example project".
 * **Syntax highlighting (generic, no imposed style):** new
   ``djangoql/js/highlight.js`` exposes ``DjangoQLHighlight.tokenize(text)`` — a
   pure, lossless, UMD tokenizer mirroring the grammar (feed it to CodeMirror,

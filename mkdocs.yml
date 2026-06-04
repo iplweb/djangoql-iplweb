@@ -38,4 +38,5 @@ nav:
   - Outside the admin: queryset.md
   - Syntax highlighting: syntax-highlighting.md
   - Completion widget: completion-widget.md
+  - Example project: example-project.md
   - Internationalization: i18n.md
