@@ -75,4 +75,72 @@ DjangoQL.prototype.generateSuggestions = function () {
   }
 };
 
+// Value autocomplete inside an `in ( ... )` list. The upstream widget detects
+// value scope only right after a binary operator, not inside an IN list. When
+// the caret sits inside `<field> in ( ... |` (or `not in ( ... |`), resolve
+// <field> and switch to value scope so its suggestions appear; the widget's
+// existing value selection/insertion then works unchanged.
+function inListField(djangoql, text, pos) {
+  var before = text.slice(0, pos);
+  var tokens = djangoql.lexer.setInput(before).lexAll();
+  var depth = 0;
+  for (var i = tokens.length - 1; i >= 0; i--) {
+    var name = tokens[i].name;
+    if (name === 'PAREN_R') {
+      depth += 1;
+    } else if (name === 'PAREN_L') {
+      if (depth > 0) {
+        depth -= 1;
+      } else {
+        // Unclosed '(' — an IN-list opener is "<NAME> [not] in (".
+        if (tokens[i - 1] && tokens[i - 1].name === 'IN') {
+          var j = i - 2;
+          if (tokens[j] && tokens[j].name === 'NOT') {
+            j -= 1;
+          }
+          var nameToken = tokens[j];
+          if (nameToken && nameToken.name === 'NAME') {
+            var last = tokens[tokens.length - 1];
+            var prefix = before.slice(last.end).replace(/^\s+/, '');
+            if (prefix.charAt(0) === '"' || prefix.charAt(0) === "'") {
+              prefix = prefix.slice(1);
+            }
+            return { name: nameToken.value, prefix: prefix };
+          }
+        }
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+var getContext = DjangoQL.prototype.getContext;
+DjangoQL.prototype.getContext = function (text, pos) {
+  var context = getContext.call(this, text, pos);
+  try {
+    if (context.scope !== 'value' && this.currentModel) {
+      var inList = inListField(this, text, pos);
+      if (inList) {
+        var resolved = this.resolveName(inList.name);
+        if (resolved.model && resolved.field) {
+          context.scope = 'value';
+          context.model = resolved.model;
+          context.field = resolved.field;
+          context.modelStack = resolved.modelStack;
+          context.prefix = inList.prefix;
+        }
+      }
+    }
+  } catch (e) {
+    // In-list value scope is a best-effort enhancement on top of the base
+    // completion; never let it break the base behavior. Surface the cause for
+    // debugging instead of swallowing it silently.
+    if (window.console && window.console.debug) {
+      window.console.debug('djangoql: in-list completion skipped', e);
+    }
+  }
+  return context;
+};
+
 window.DjangoQL = DjangoQL;
