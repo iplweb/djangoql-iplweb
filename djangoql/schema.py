@@ -188,7 +188,10 @@ class DjangoQLField:
                     field_type=self.type,
                     possible_values=self.value_types_description,
                     value=repr(value),
-                )
+                ),
+                # Carry the offending value so callers can locate it in the
+                # query (e.g. to highlight it).
+                value=value,
             )
 
 
@@ -506,6 +509,9 @@ class DjangoQLSchema:
             if field is None:
                 raise DjangoQLSchemaError(
                     self._unknown_field_message(model, model_cls, name_part),
+                    # Carry the offending name so callers can locate it in the
+                    # query (schema errors don't carry a line/column).
+                    value=name_part,
                 )
             if field.type == 'relation':
                 prev_relation = field
