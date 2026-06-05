@@ -6,9 +6,11 @@ from django.core.exceptions import FieldError, ValidationError
 from django.db import DataError, NotSupportedError
 from django.forms import Media
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.template.loader import render_to_string
+from django.templatetags.static import static
 from django.urls import path, reverse
-from django.views.generic import TemplateView
+from django.utils.translation import get_language
 from django.views.i18n import JavaScriptCatalog
 
 from .breakdown import explain, explain_empty
@@ -17,6 +19,7 @@ from .formatter import format_query
 from .queryset import apply_search
 from .schema import DjangoQLSchema
 from .serializers import SuggestionsAPISerializer
+from .syntax_help import render_syntax_help
 from .views import SuggestionsAPIView
 
 
@@ -249,15 +252,33 @@ class DjangoQLSearchMixin:
                 ),
                 path(
                     'djangoql-syntax/',
-                    self.admin_site.admin_view(
-                        TemplateView.as_view(
-                            template_name=self.djangoql_syntax_help_template,
-                        )
-                    ),
+                    self.admin_site.admin_view(self.djangoql_syntax_help),
                     name='djangoql_syntax_help',
                 ),
             ]
         return custom_urls + super().get_urls()
+
+    def djangoql_syntax_help(self, request):
+        """Render the syntax help page for the active language.
+
+        The help text is authored as per-language Markdown (see
+        :mod:`djangoql.syntax_help`). It is compiled to HTML when a Markdown
+        library is importable, and otherwise served as raw Markdown inside a
+        ``<pre>`` block — djangoql does not depend on a Markdown compiler. The
+        surrounding page chrome comes from ``djangoql_syntax_help_template``,
+        which integrators may override.
+        """
+        body, is_html = render_syntax_help(
+            get_language(),
+            static('djangoql/img/completion_example.png'),
+        )
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'DjangoQL search syntax',
+            'body': body,
+            'is_html': is_html,
+        }
+        return render(request, self.djangoql_syntax_help_template, context)
 
     def djangoql_format(self, request):
         """Pretty-print a query and return it as JSON.

@@ -16,6 +16,8 @@ import re
 from django.core.exceptions import FieldError, ValidationError
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.templatetags.static import static
+from django.utils import translation
 from django.views.decorators.csrf import csrf_exempt
 
 from djangoql.breakdown import explain
@@ -23,6 +25,11 @@ from djangoql.exceptions import DjangoQLError
 from djangoql.formatter import format_query
 from djangoql.queryset import apply_search
 from djangoql.serializers import DjangoQLSchemaSerializer
+from djangoql.syntax_help import (
+    AVAILABLE_LANGUAGES,
+    render_syntax_help,
+    resolve_language,
+)
 
 from .models import Book
 from .schema import BookSchema
@@ -50,6 +57,32 @@ def index(request):
         {
             'examples': EXAMPLES,
             'introspections': json.dumps(introspections),
+        },
+    )
+
+
+def syntax_help(request):
+    """Render the DjangoQL syntax help as HTML, outside the admin.
+
+    Because this project installs ``markdown`` (see requirements.txt), the same
+    ``render_syntax_help`` helper that the admin uses compiles the per-language
+    Markdown to HTML here. A ``?lang=`` query parameter lets a visitor preview
+    any of the bundled translations without configuring LocaleMiddleware — handy
+    for a demo; a real site would let language follow the request instead.
+    """
+    requested = request.GET.get('lang') or translation.get_language()
+    language = resolve_language(requested)
+    body, is_html = render_syntax_help(
+        language, static('djangoql/img/completion_example.png')
+    )
+    return render(
+        request,
+        'library/syntax_help.html',
+        {
+            'body': body,
+            'is_html': is_html,
+            'language': language,
+            'languages': sorted(AVAILABLE_LANGUAGES),
         },
     )
 
