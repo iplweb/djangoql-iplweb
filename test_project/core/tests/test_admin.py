@@ -69,6 +69,10 @@ class DjangoQLAdminTest(TestCase):
         body = response.content.decode('utf8')
         self.assertIn('nie zawiera', body)  # 'does not contain'
         self.assertIn('Zaawansowane wyszukiwanie', body)  # placeholder
+        # JavaScriptCatalog \u-escapes non-ASCII, so match the ASCII prefix of
+        # the translation ("Pomoc dotycząca składni") to prove the "Syntax Help"
+        # link label is localised.
+        self.assertIn('"Syntax Help": "Pomoc', body)
 
     def test_changelist_loads_i18n_catalog_before_completion(self):
         # End-to-end: the rendered admin changelist must emit the gettext

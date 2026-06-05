@@ -25,3 +25,6 @@ msgstr "не містить"
 
 msgid "Advanced search with Query Language"
 msgstr "Розширений пошук мовою запитів"
+
+msgid "Syntax Help"
+msgstr "Довідка із синтаксису"

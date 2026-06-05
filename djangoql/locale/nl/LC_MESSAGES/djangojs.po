@@ -25,3 +25,6 @@ msgstr "bevat niet"
 
 msgid "Advanced search with Query Language"
 msgstr "Geavanceerd zoeken met querytaal"
+
+msgid "Syntax Help"
+msgstr "Syntaxishulp"

@@ -25,3 +25,6 @@ msgstr "を含まない"
 
 msgid "Advanced search with Query Language"
 msgstr "クエリ言語による高度な検索"
+
+msgid "Syntax Help"
+msgstr "構文ヘルプ"

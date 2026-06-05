@@ -9,6 +9,23 @@ function gettext(s) {
   return window.gettext ? window.gettext(s) : s;
 }
 
+// The completion popup's "Syntax Help" link is built by upstream with a
+// hard-coded English string baked into the bundle (createCompletionElement),
+// so it never passes through Django's JS gettext catalog and stays English even
+// in a translated admin. Re-render its text via gettext after the upstream
+// method runs. Same approach as the operator hints below: override the
+// prototype method, let upstream do its work, then localise the result.
+var createCompletionElement = DjangoQL.prototype.createCompletionElement;
+DjangoQL.prototype.createCompletionElement = function () {
+  createCompletionElement.apply(this, arguments);
+  if (this.completion) {
+    var link = this.completion.querySelector('p.syntax-help a');
+    if (link) {
+      link.textContent = gettext('Syntax Help');
+    }
+  }
+};
+
 // The three comparison operators that upstream renders with a human-readable
 // hint (e.g. "!=  is not equal to"). Mapped operator text -> English source
 // string so we can re-render the hint via gettext. The other operators (=, >,

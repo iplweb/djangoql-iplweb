@@ -25,3 +25,6 @@ msgstr "不包含"
 
 msgid "Advanced search with Query Language"
 msgstr "使用查询语言的高级搜索"
+
+msgid "Syntax Help"
+msgstr "语法帮助"

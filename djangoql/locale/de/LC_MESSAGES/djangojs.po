@@ -25,3 +25,6 @@ msgstr "enthält nicht"
 
 msgid "Advanced search with Query Language"
 msgstr "Erweiterte Suche mit Abfragesprache"
+
+msgid "Syntax Help"
+msgstr "Syntaxhilfe"
