@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.26.0 (2026-06-05)
+-------------------
 
 * **Translatable autocomplete labels:** the completion popup's operator hint
   labels (``is not equal to``, ``contains``, ``does not contain``) and the
