@@ -2,6 +2,23 @@ import DjangoQL from 'djangoql-completion';
 
 import 'djangoql-completion/dist/completion.css';
 
+// Translate the upstream operator hint labels through Django's JS gettext
+// catalog when one is present (the admin loads it via `djangoql-i18n/`). Falls
+// back to the English source string off-admin, where no catalog is loaded.
+function gettext(s) {
+  return window.gettext ? window.gettext(s) : s;
+}
+
+// The three comparison operators that upstream renders with a human-readable
+// hint (e.g. "!=  is not equal to"). Mapped operator text -> English source
+// string so we can re-render the hint via gettext. The other operators (=, >,
+// startswith, in, ...) carry no hint and are left untouched.
+var OP_HINTS = {
+  '!=': 'is not equal to',
+  '~': 'contains',
+  '!~': 'does not contain',
+};
+
 // When a suggestion is picked, the upstream widget writes the new value
 // straight to `textarea.value`. Assigning `.value` does NOT fire an `input`
 // event, so anything listening for one — notably the highlight overlay
@@ -64,6 +81,15 @@ DjangoQL.prototype.generateSuggestions = function () {
   var context = this.getContext(textarea.value, textarea.selectionStart);
   if (context.scope !== 'comparison') {
     return;
+  }
+  // Localise the operator hint labels. Rebuild suggestionText from the operator
+  // text + translated hint so we don't depend on upstream's exact markup.
+  for (var k = 0; k < this.suggestions.length; k++) {
+    var sug = this.suggestions[k];
+    if (sug && OP_HINTS[sug.text]) {
+      sug.suggestionText =
+        sug.text + '<i>' + gettext(OP_HINTS[sug.text]) + '</i>';
+    }
   }
   var model = this.models[context.model];
   var field = model && context.field && model[context.field];

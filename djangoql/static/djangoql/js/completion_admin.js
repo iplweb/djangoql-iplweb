@@ -34,7 +34,9 @@
     var QLEnabledInURL;
     var QLInput;
     var QLToggle;
-    var QLPlaceholder = 'Advanced search with Query Language';
+    var QLPlaceholder = window.gettext
+      ? window.gettext('Advanced search with Query Language')
+      : 'Advanced search with Query Language';
     var originalPlaceholder;
     var textarea;
     var input = document.querySelector('input[name=q]');

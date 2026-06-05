@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.views.generic import TemplateView
+from django.views.i18n import JavaScriptCatalog
 
 from .breakdown import explain, explain_empty
 from .exceptions import DjangoQLError
@@ -166,6 +167,16 @@ class DjangoQLSearchMixin:
         media = super().media
         if self.djangoql_completion:
             js = [
+                # The djangojs gettext catalog, served as a view (root-relative
+                # URL). It must come first so window.gettext is defined before
+                # completion.js localises the operator hints / placeholder.
+                reverse(
+                    '{}:{}_{}_djangoql_i18n'.format(
+                        self.admin_site.name,
+                        self.model._meta.app_label,
+                        self.model._meta.model_name,
+                    )
+                ),
                 'djangoql/js/completion.js',
             ]
             if self.search_mode_toggle_enabled():
@@ -221,6 +232,17 @@ class DjangoQLSearchMixin:
                     'explain/',
                     self.admin_site.admin_view(self.djangoql_explain),
                     name='{}_{}_djangoql_explain'.format(
+                        self.model._meta.app_label,
+                        self.model._meta.model_name,
+                    ),
+                ),
+                path(
+                    'djangoql-i18n/',
+                    self.admin_site.admin_view(
+                        JavaScriptCatalog.as_view(packages=['djangoql']),
+                        cacheable=True,
+                    ),
+                    name='{}_{}_djangoql_i18n'.format(
                         self.model._meta.app_label,
                         self.model._meta.model_name,
                     ),

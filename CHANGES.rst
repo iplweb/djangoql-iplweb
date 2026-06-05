@@ -1,3 +1,17 @@
+Unreleased
+----------
+
+* **Translatable autocomplete labels:** the completion popup's operator hint
+  labels (``is not equal to``, ``contains``, ``does not contain``) and the
+  search box placeholder (``Advanced search with Query Language``) are now
+  localised. These strings are baked into the upstream ``djangoql-completion``
+  bundle as plain literals, so the admin mixin now serves a ``djangojs`` gettext
+  catalog from a new ``djangoql-i18n/`` endpoint (loaded before
+  ``completion.js``) and the widget re-renders the labels through
+  ``window.gettext`` — falling back to English where no catalog is present.
+  Translations ship for all 11 maintained locales (de, es, fr, it, ja, nl, pl,
+  pt_BR, ru, uk, zh_Hans).
+
 0.25.0 (2026-06-04)
 -------------------
 

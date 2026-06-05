@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import DataError, NotSupportedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils import translation
 
 from core.admin import BookAdmin, CustomUserAdmin
 from djangoql.exceptions import DjangoQLError
@@ -53,6 +54,36 @@ class DjangoQLAdminTest(TestCase):
         self.assertEqual('core.book', introspections['current_model'])
         for model in ('core.book', 'auth.user', 'auth.group'):
             self.assertIn(model, introspections['models'])
+
+    def test_i18n_catalog_endpoint(self):
+        url = reverse('admin:core_book_djangoql_i18n')
+        # unauthorized request should be redirected
+        self.assertEqual(302, self.client.get(url).status_code)
+        self.assertTrue(self.client.login(**self.credentials))
+        # Served as a JavaScript gettext catalog. Under Polish, it must carry
+        # the translated operator hint and search placeholder so the front-end
+        # widget can localise them.
+        with translation.override('pl'):
+            response = self.client.get(url)
+        self.assertEqual(200, response.status_code)
+        body = response.content.decode('utf8')
+        self.assertIn('nie zawiera', body)  # 'does not contain'
+        self.assertIn('Zaawansowane wyszukiwanie', body)  # placeholder
+
+    def test_changelist_loads_i18n_catalog_before_completion(self):
+        # End-to-end: the rendered admin changelist must emit the gettext
+        # catalog <script> and load it before completion.js, so window.gettext
+        # is defined by the time the widget localises its labels.
+        self.assertTrue(self.client.login(**self.credentials))
+        html = self.client.get(
+            reverse('admin:core_book_changelist'),
+        ).content.decode('utf8')
+        catalog_url = reverse('admin:core_book_djangoql_i18n')
+        self.assertIn(catalog_url, html)
+        self.assertLess(
+            html.index(catalog_url),
+            html.index('djangoql/js/completion.js'),
+        )
 
     def test_format_endpoint(self):
         url = reverse('admin:core_book_djangoql_format')
@@ -377,6 +408,19 @@ class DjangoQLSearchFlowTest(TestCase):
         # file that the admin loads alongside the completion widget.
         rendered = str(self.book_admin.media)
         self.assertIn('djangoql/js/multiline.js', rendered)
+
+    def test_media_includes_i18n_catalog(self):
+        # The djangojs gettext catalog is emitted as a <script> on the
+        # changelist so completion.js can translate the operator hint labels
+        # and the search placeholder. It is referenced by its (root-relative)
+        # view URL, not a static path, and must load before completion.js.
+        catalog_url = reverse('admin:core_book_djangoql_i18n')
+        rendered = str(self.book_admin.media)
+        self.assertIn(catalog_url, rendered)
+        self.assertLess(
+            rendered.index(catalog_url),
+            rendered.index('djangoql/js/completion.js'),
+        )
 
     def test_highlight_opt_in_media(self):
         # Highlighting is opt-in: off by default, no overlay assets loaded.
