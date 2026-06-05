@@ -151,6 +151,26 @@ class DjangoQLAdminTest(TestCase):
             self.assertEqual(200, response.status_code)
             self.client.logout()
 
+    def test_djangoql_syntax_help_renders_markdown_content(self):
+        url = reverse('admin:djangoql_syntax_help')
+        self.assertTrue(self.client.login(**self.credentials))
+        response = self.client.get(url)
+        body = response.content.decode('utf-8')
+        # Content sourced from the Markdown help is present, and the image
+        # token has been substituted with a real static URL.
+        self.assertIn('Comparison operators', body)
+        self.assertNotIn('COMPLETION_EXAMPLE_IMG', body)
+        self.assertIn('completion_example.png', body)
+
+    def test_djangoql_syntax_help_follows_active_language(self):
+        url = reverse('admin:djangoql_syntax_help')
+        self.assertTrue(self.client.login(**self.credentials))
+        with translation.override('pl'):
+            response = self.client.get(url)
+        body = response.content.decode('utf-8')
+        # The Polish help uses a translated heading.
+        self.assertIn('Składnia', body)
+
     def test_suggestions(self):
         url = reverse('admin:core_book_djangoql_suggestions')
         # unauthorized request should be redirected

@@ -73,7 +73,18 @@ Then open:
 | URL                         | What it shows                                            |
 | --------------------------- | ------------------------------------------------------- |
 | <http://127.0.0.1:8000/>       | Search demo: auto-completion, multi-line, highlight, Format, Explain counts, results |
-| <http://127.0.0.1:8000/admin/> | Django admin (completion + multi-line + highlight overlay) |
+| <http://127.0.0.1:8000/syntax-help/> | The DjangoQL syntax help rendered as **HTML from Markdown**, with a language switcher (`?lang=pl`, `?lang=ja`, …) |
+| <http://127.0.0.1:8000/admin/> | Django admin (completion + multi-line + highlight overlay; the in-admin syntax help is also HTML here) |
+
+### Markdown help
+
+djangoql authors its syntax help as per-language Markdown and renders it to HTML
+**only when a Markdown compiler is importable** — otherwise it shows the raw
+Markdown in a `<pre>` block. The library itself does not depend on one. This
+example lists `markdown` in `requirements.txt`, so both the standalone
+`/syntax-help/` page and the admin help page render as HTML. Install the example
+deps with `pip install -r requirements.txt` (or rely on the repo's dev
+environment, where `markdown` is already present).
 
 ## Things to try
 

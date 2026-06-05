@@ -123,3 +123,24 @@ class ApiEndpointsTest(TestCase):
 
     def test_explain_empty_query(self):
         self.assertIsNone(self._json('demo-api-explain', q='  ')['tree'])
+
+
+class SyntaxHelpViewTest(TestCase):
+    def test_renders_html_when_markdown_installed(self):
+        # The example project declares `markdown`, so the help compiles to HTML.
+        response = self.client.get(reverse('demo-syntax-help'))
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode('utf-8')
+        self.assertIn('<table>', body)
+        self.assertNotIn('COMPLETION_EXAMPLE_IMG', body)
+        self.assertIn('completion_example.png', body)
+
+    def test_lang_param_selects_translation(self):
+        response = self.client.get(reverse('demo-syntax-help'), {'lang': 'pl'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Składnia', response.content.decode('utf-8'))
+
+    def test_unknown_lang_falls_back_to_english(self):
+        response = self.client.get(reverse('demo-syntax-help'), {'lang': 'xx'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Comparison operators', response.content.decode('utf-8'))

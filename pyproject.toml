@@ -140,4 +140,5 @@ djangoql = [
     "templates/**/*.html",
     "locale/**/*.po",
     "locale/**/*.mo",
+    "help/**/*.md",
 ]
