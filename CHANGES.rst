@@ -1,3 +1,22 @@
+0.27.0 (2026-06-05)
+-------------------
+
+* **Markdown-based, i18n-aware syntax help:** the admin "DjangoQL search syntax"
+  help page is now authored as per-language Markdown instead of a single
+  block-structured HTML template. When a Markdown compiler is importable the
+  help renders as HTML; otherwise it falls back to the raw Markdown inside a
+  ``<pre>`` block. djangoql itself does **not** depend on a Markdown library —
+  the renderer guards the import — so a bare install degrades gracefully, while
+  installing ``markdown`` (for any reason) upgrades the page to HTML with no
+  configuration. The help text ships for all 11 maintained locales (de, es, fr,
+  it, ja, nl, pl, pt_BR, ru, uk, zh_Hans) and follows the active language with
+  an English fallback. The ``djangoql_syntax_help`` admin URL and the
+  ``djangoql_syntax_help_template`` override hook are preserved.
+* **example_project:** declares ``markdown`` in a new ``requirements.txt`` and
+  adds a standalone (non-admin) ``/syntax-help/`` page — with a ``?lang=``
+  switcher and a nav link — demonstrating the HTML-rendered help outside the
+  admin.
+
 0.26.0 (2026-06-05)
 -------------------
 
