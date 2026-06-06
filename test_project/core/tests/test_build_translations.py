@@ -33,8 +33,13 @@ PO_TEMPLATE = (
 )
 
 
-def _write_po(locale_root, language, body):
-    po_path = pathlib.Path(locale_root) / language / 'LC_MESSAGES' / 'django.po'
+def _write_po(locale_root, language, body, domain='django'):
+    po_path = (
+        pathlib.Path(locale_root)
+        / language
+        / 'LC_MESSAGES'
+        / ('%s.po' % domain)
+    )
     po_path.parent.mkdir(parents=True, exist_ok=True)
     po_path.write_text(body, encoding='utf-8')
     return po_path
@@ -58,13 +63,16 @@ def test_compile_catalogs_produces_mo_loadable_by_stdlib_gettext(tmp_path):
 def test_compile_catalogs_compiles_every_locale(tmp_path):
     locale_root = tmp_path / 'locale'
     _write_po(locale_root, 'pl', PO_TEMPLATE)
+    _write_po(locale_root, 'pl', PO_TEMPLATE, domain='djangojs')
     _write_po(locale_root, 'de', PO_TEMPLATE)
+    _write_po(locale_root, 'de', PO_TEMPLATE, domain='djangojs')
 
     compile_catalogs(locale_root=str(locale_root))
 
     for language in ('pl', 'de'):
-        mo = locale_root / language / 'LC_MESSAGES' / 'django.mo'
-        assert mo.is_file(), 'missing .mo for %s' % language
+        for domain in ('django', 'djangojs'):
+            mo = locale_root / language / 'LC_MESSAGES' / ('%s.mo' % domain)
+            assert mo.is_file(), 'missing %s.mo for %s' % (domain, language)
 
 
 def _po_with_revision_date(value):
