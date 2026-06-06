@@ -7,3 +7,6 @@ include _translations.py
 # at build time by the backend and are not tracked in git. Ship both so the
 # sdist is self-contained.
 recursive-include djangoql/locale *.po *.mo
+
+# Markdown syntax-help documents: one translated source file per locale.
+recursive-include djangoql/help *.md

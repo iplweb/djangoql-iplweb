@@ -19,7 +19,11 @@ from .formatter import format_query
 from .queryset import apply_search
 from .schema import DjangoQLSchema
 from .serializers import SuggestionsAPISerializer
-from .syntax_help import render_syntax_help
+from .syntax_help import (
+    get_syntax_help_title,
+    render_syntax_help,
+    resolve_language,
+)
 from .views import SuggestionsAPIView
 
 
@@ -268,15 +272,23 @@ class DjangoQLSearchMixin:
         surrounding page chrome comes from ``djangoql_syntax_help_template``,
         which integrators may override.
         """
+        requested_language = (
+            request.GET.get('lang')
+            or request.GET.get('language')
+            or getattr(request, 'LANGUAGE_CODE', None)
+            or get_language()
+        )
+        language = resolve_language(requested_language)
         body, is_html = render_syntax_help(
-            get_language(),
+            language,
             static('djangoql/img/completion_example.png'),
         )
         context = {
             **self.admin_site.each_context(request),
-            'title': 'DjangoQL search syntax',
+            'title': get_syntax_help_title(language),
             'body': body,
             'is_html': is_html,
+            'language': language,
         }
         return render(request, self.djangoql_syntax_help_template, context)
 

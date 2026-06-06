@@ -48,6 +48,16 @@ class LoadMarkdownTest(SimpleTestCase):
             text = syntax_help.load_markdown(code)
             self.assertTrue(text.strip(), '%s help is empty' % code)
 
+    def test_title_follows_language(self):
+        self.assertEqual(
+            'DjangoQL search syntax',
+            syntax_help.get_syntax_help_title('en'),
+        )
+        self.assertEqual(
+            'Składnia zapytań DjangoQL',
+            syntax_help.get_syntax_help_title('pl'),
+        )
+
 
 class RenderSyntaxHelpTest(SimpleTestCase):
     def test_image_token_substituted(self):

@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% load static %}
 
-{% block title %}DjangoQL search syntax{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block extrahead %}
   <link rel="stylesheet" type="text/css" href="{% block syntax_stylesheet %}{% static "djangoql/css/syntax_help.css" %}{% endblock %}" />
@@ -9,7 +9,7 @@
 
 {% block coltype %}colM{% endblock %}
 
-{% block content_title %}<h1>DjangoQL search syntax</h1>{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
 {% block content %}
   {# The help body is rendered from per-language Markdown (djangoql.syntax_help). #}

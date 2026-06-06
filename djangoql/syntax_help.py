@@ -75,6 +75,15 @@ def load_markdown(language):
     return path.read_text(encoding='utf-8')
 
 
+def get_syntax_help_title(language):
+    """Return the first Markdown H1 for the best-matching ``language``."""
+    for line in load_markdown(language).splitlines():
+        line = line.strip()
+        if line.startswith('# '):
+            return line[2:].strip()
+    return 'DjangoQL search syntax'
+
+
 def render_syntax_help(language, image_url):
     """Render the syntax help for ``language``.
 

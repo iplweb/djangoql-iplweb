@@ -174,6 +174,18 @@ class DjangoQLAdminTest(TestCase):
         body = response.content.decode('utf-8')
         # The Polish help uses a translated heading.
         self.assertIn('Składnia', body)
+        self.assertEqual(
+            'Składnia zapytań DjangoQL',
+            response.context['title'],
+        )
+
+    def test_djangoql_syntax_help_accepts_language_query_string(self):
+        url = reverse('admin:djangoql_syntax_help')
+        self.assertTrue(self.client.login(**self.credentials))
+        response = self.client.get(url, {'lang': 'pl'})
+        body = response.content.decode('utf-8')
+        self.assertIn('Składnia zapytań DjangoQL', body)
+        self.assertEqual('pl', response.context['language'])
 
     def test_suggestions(self):
         url = reverse('admin:core_book_djangoql_suggestions')
