@@ -84,6 +84,19 @@ class ExplainAlwaysTest(BreakdownBaseTest):
         self.assertEqual(len(dead), 1)
         self.assertEqual(dead[0]['text'], 'genre = 3')
 
+    def test_and_has_higher_precedence_than_or(self):
+        tree = explain(
+            Book.objects.all(),
+            'genre = 1 and rating = 5 or genre = 2',
+        )
+
+        self.assertEqual(tree['role'], 'or')
+        self.assertEqual(tree['count'], 3)
+        self.assertEqual(tree['children'][0]['role'], 'and')
+        self.assertEqual(tree['children'][0]['count'], 2)
+        self.assertEqual(tree['children'][1]['text'], 'genre = 2')
+        self.assertEqual(tree['children'][1]['count'], 1)
+
     def test_max_nodes_truncates(self):
         tree = explain(
             Book.objects.all(),

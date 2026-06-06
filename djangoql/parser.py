@@ -31,6 +31,11 @@ def unescape(value):
 
 
 class DjangoQLParser:
+    precedence = (
+        ('left', 'OR'),
+        ('left', 'AND'),
+    )
+
     def __init__(self, debug=False, **kwargs):
         self.default_lexer = DjangoQLLexer()
         self.tokens = self.default_lexer.tokens
@@ -53,9 +58,10 @@ class DjangoQLParser:
 
     def p_expression_logical(self, p):
         """
-        expression : expression logical expression
+        expression : expression AND expression
+                   | expression OR expression
         """
-        p[0] = Expression(left=p[1], operator=p[2], right=p[3])
+        p[0] = Expression(left=p[1], operator=Logical(p[2]), right=p[3])
 
     def p_expression_comparison(self, p):
         """
@@ -72,13 +78,6 @@ class DjangoQLParser:
         name : NAME
         """
         p[0] = Name(parts=p[1].split('.'))
-
-    def p_logical(self, p):
-        """
-        logical : AND
-                | OR
-        """
-        p[0] = Logical(operator=p[1])
 
     def p_comparison_number(self, p):
         """

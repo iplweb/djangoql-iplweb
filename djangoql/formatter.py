@@ -10,9 +10,10 @@ Two renderers, both driven purely by the parsed AST (no database, no schema):
   turning a long flat query into a readable, nested layout.
 
 The parser drops redundant parentheses (``(a)`` parses to ``a``) and represents
-``and`` / ``or`` as a right-associative binary tree. Both renderers add back the
-parentheses required so that re-parsing the rendered text yields an **equal**
-AST — round-trip safety is covered by the tests.
+logical expressions as a binary tree respecting operator precedence and explicit
+grouping. Both renderers add back the parentheses required so that re-parsing
+the rendered text yields an **equal** AST — round-trip safety is covered by the
+tests.
 """
 
 from .ast import Logical
@@ -72,8 +73,8 @@ def _side(node):
 def _flatten(node, op):
     """Flatten a chain of the *same* logical operator into a flat operand list.
 
-    ``a and b and c`` (a right-associative tree) becomes ``[a, b, c]``. Operands
-    joined by a different operator are returned whole (and later parenthesised).
+    ``a and b and c`` becomes ``[a, b, c]``. Operands joined by a different
+    operator are returned whole (and later parenthesised).
     """
     if _is_logical(node) and node.operator.operator == op:
         return _flatten(node.left, op) + _flatten(node.right, op)

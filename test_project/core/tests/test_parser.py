@@ -148,6 +148,68 @@ class DjangoQLParseTest(TestCase):
             ),
         )
 
+    def test_and_has_higher_precedence_than_or(self):
+        self.assertEqual(
+            Expression(
+                Expression(
+                    Expression(
+                        Name('a'),
+                        Comparison('='),
+                        Const(1),
+                    ),
+                    Logical('and'),
+                    Expression(
+                        Name('b'),
+                        Comparison('='),
+                        Const(2),
+                    ),
+                ),
+                Logical('or'),
+                Expression(
+                    Expression(
+                        Name('c'),
+                        Comparison('='),
+                        Const(3),
+                    ),
+                    Logical('and'),
+                    Expression(
+                        Name('d'),
+                        Comparison('='),
+                        Const(4),
+                    ),
+                ),
+            ),
+            self.parser.parse(
+                'a = 1 and b = 2 or c = 3 and d = 4'
+            ),
+        )
+
+    def test_mixed_logical_chain_uses_sql_like_precedence(self):
+        self.assertEqual(
+            Expression(
+                Expression(
+                    Expression(
+                        Name('a'),
+                        Comparison('='),
+                        Const(1),
+                    ),
+                    Logical('and'),
+                    Expression(
+                        Name('b'),
+                        Comparison('='),
+                        Const(2),
+                    ),
+                ),
+                Logical('or'),
+                Expression(
+                    Name('c'),
+                    Comparison('='),
+                    Const(3),
+                ),
+            ),
+            self.parser.parse('a = 1 and b = 2 or c = 3'),
+        )
+
     def test_invalid_comparison(self):
         invalid_comparisons = (
             'foo > None',

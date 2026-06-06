@@ -121,6 +121,17 @@ class DjangoQLQuerySetTest(TestCase):
             where_clause,
         )
 
+    def test_and_has_higher_precedence_than_or(self):
+        User.objects.create(username='a', first_name='match')
+        User.objects.create(username='b', first_name='other')
+
+        qs = apply_search(
+            User.objects.order_by('username'),
+            'username = "a" and first_name = "match" or username = "b"',
+        )
+
+        self.assertEqual([u.username for u in qs], ['a', 'b'])
+
     def test_not_in_query(self):
         # 'not in' is the two-token comparison operator form.
         qs = apply_search(User.objects.all(), 'username not in ("a", "b")')
