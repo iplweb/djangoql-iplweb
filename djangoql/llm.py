@@ -64,6 +64,11 @@ _EXAMPLE_VALUE_BY_TYPE = {
 #: the prompt.
 MAX_SUGGESTED_VALUES = 20
 
+#: Cap on emitted choice labels. Larger than MAX_SUGGESTED_VALUES because
+#: choices are a closed set -- the LLM should see the whole domain, not a
+#: sample -- and they are read from the field definition without a query.
+MAX_CHOICE_VALUES = 100
+
 
 def operators_for(field):
     """Return the legal DjangoQL operators for ``field``.
@@ -78,6 +83,28 @@ def operators_for(field):
     if getattr(field, 'object_reference', False):
         return ['=', '!=', 'in', 'not in']
     return list(OPERATORS_BY_TYPE.get(field.type, ['=', '!=', 'in', 'not in']))
+
+
+def _choice_labels(field):
+    """Closed-set choice labels for a field, or None.
+
+    DjangoQL matches choice fields by their human label and translates it back
+    to the stored value (``schema.py`` get_lookup_value), so the labels are the
+    exact tokens an LLM should put in a query. Choices live on the model field
+    and are read without a database query.
+    """
+    model = getattr(field, 'model', None)
+    name = getattr(field, 'name', None)
+    if not model or not name:
+        return None
+    try:
+        choices = model._meta.get_field(name).choices
+    except (FieldDoesNotExist, AttributeError):
+        return None
+    if not choices:
+        return None
+    labels = [str(c[1]) for c in choices]
+    return labels[:MAX_CHOICE_VALUES] or None
 
 
 def _field_metadata(field):
@@ -130,12 +157,17 @@ def describe_field(name, field):
             op,
             _EXAMPLE_VALUE_BY_TYPE.get(field.type, '?'),
         )
+        choices = _choice_labels(field)
+        if choices:
+            entry['choices'] = choices
+            entry['note'] = 'value should be one of the listed choices'
+        else:
+            options = _field_options(field)
+            if options:
+                entry['suggested_values'] = options
     if getattr(field, 'object_reference', False):
         # Object-picker fields accept only = / != / in / not in against a pk.
         entry['object_reference'] = True
-    options = _field_options(field)
-    if options:
-        entry['suggested_values'] = options
     return entry
 
 

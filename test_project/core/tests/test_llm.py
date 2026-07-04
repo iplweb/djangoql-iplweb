@@ -129,6 +129,19 @@ class DescribeSchemaForLLMTest(TestCase):
         rating = self.bundle['models']['core.book']['rating']
         self.assertNotIn('label', rating)
 
+    def test_choice_field_lists_labels_as_closed_set(self):
+        # Book.genre is a PositiveIntegerField with choices; DjangoQL matches
+        # on the human label, so the labels are what the LLM must emit.
+        genre = self.bundle['models']['core.book']['genre']
+        self.assertEqual(['Drama', 'Comics', 'Other'], genre['choices'])
+        self.assertIn('note', genre)
+
+    def test_choice_field_emits_without_suggest_options(self):
+        # No suggest_options flag anywhere -> choices still appear (they are
+        # static and read without a query).
+        genre = self.bundle['models']['core.book']['genre']
+        self.assertNotIn('suggested_values', genre)
+
 
 class DjangoqlSchemaCommandTest(TestCase):
     def _run(self, *args):
