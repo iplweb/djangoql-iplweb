@@ -163,8 +163,7 @@ $ python manage.py djangoql_describe_schema_for_llm library.Book --max-fk-option
 `max_fk_options` is a cardinality gate, not a sample size: a relation's
 values are only embedded when the number of *distinct* values is at or under
 the threshold, so the model sees the whole domain rather than an arbitrary
-slice. Pass `0` to turn this off entirely — relations then fall back to
-"traverse with a dot or compare to `None`".
+slice. `0` disables auto mode and any `'field_name'`/`['a','b']`/`'__str__'` spec (all are gated by this threshold); only `True` (which ignores the threshold) and `False` (always off) are unaffected by `max_fk_options`. Disabled relations fall back to "traverse with a dot or compare to `None`".
 
 #### Choosing what a relation reveals: `fk_options`
 
@@ -271,7 +270,7 @@ $ python manage.py djangoql_describe_schema_for_llm library.Book \
 | `app_label.ModelName` | The model to describe (required). |
 | `--schema` | Dotted path to a `DjangoQLSchema` subclass to use instead of the default. |
 | `--indent` | JSON indentation (default `2`; `0` for the most compact multi-line output). |
-| `--max-fk-options` | Max distinct related-model values to embed per relation (default `50`). `0` disables auto mode; explicit `fk_options` on the schema still apply. See [Related-model values](#related-model-values). |
+| `--max-fk-options` | Max distinct related-model values to embed per relation (default `50`). `0` disables auto mode and any `'field_name'`/`['a','b']`/`'__str__'` spec; only `True` (ignores threshold) and `False` (always off) are unaffected. See [Related-model values](#related-model-values). |
 
 The command is available in any project that has `'djangoql'` in
 `INSTALLED_APPS`.
