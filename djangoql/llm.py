@@ -17,6 +17,8 @@ models that powers autocomplete); this module only layers the operator matrix,
 examples and grammar notes on top.
 """
 
+from django.core.exceptions import FieldDoesNotExist
+
 from .schema import RelationField
 
 
@@ -78,6 +80,35 @@ def operators_for(field):
     return list(OPERATORS_BY_TYPE.get(field.type, ['=', '!=', 'in', 'not in']))
 
 
+def _field_metadata(field):
+    """`label` (verbose_name) and `help_text` from the underlying model field.
+
+    Skips the auto-generated verbose_name (the field name with underscores
+    turned into spaces) so we only emit labels that add information. Returns an
+    empty dict for custom fields with no backing model field, and for reverse
+    relations whose ``_meta`` entry has no ``verbose_name``.
+    """
+    model = getattr(field, 'model', None)
+    name = getattr(field, 'name', None)
+    if not model or not name:
+        return {}
+    try:
+        model_field = model._meta.get_field(name)
+    except (FieldDoesNotExist, AttributeError):
+        return {}
+    meta = {}
+    verbose = getattr(model_field, 'verbose_name', None)
+    if verbose:
+        verbose = str(verbose).strip()
+        default = name.replace('_', ' ').strip()
+        if verbose.lower() != default.lower():
+            meta['label'] = verbose
+    help_text = getattr(model_field, 'help_text', None)
+    if help_text and str(help_text).strip():
+        meta['help_text'] = str(help_text).strip()
+    return meta
+
+
 def describe_field(name, field):
     """Describe a single schema field as a plain, JSON-serializable dict."""
     entry = {
@@ -85,6 +116,7 @@ def describe_field(name, field):
         'nullable': bool(field.nullable),
         'operators': operators_for(field),
     }
+    entry.update(_field_metadata(field))
     if isinstance(field, RelationField):
         entry['relates_to'] = field.relation
         entry['note'] = (
