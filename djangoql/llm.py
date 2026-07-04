@@ -69,6 +69,15 @@ MAX_SUGGESTED_VALUES = 20
 #: sample -- and they are read from the field definition without a query.
 MAX_CHOICE_VALUES = 100
 
+#: Target app-labels whose rows must never be auto-dumped into a prompt.
+#: An explicit fk_options entry overrides this exclusion.
+SENSITIVE_TARGET_APP_LABELS = frozenset(
+    {'auth', 'admin', 'contenttypes', 'sessions'},
+)
+
+#: Sentinel: a relation with no fk_options entry falls back to auto mode.
+_AUTO = object()
+
 
 def operators_for(field):
     """Return the legal DjangoQL operators for ``field``.
@@ -136,7 +145,90 @@ def _field_metadata(field):
     return meta
 
 
-def describe_field(name, field):
+def _default_match_field(schema, related_label):
+    """Pick an identifying field among the related model's schema-visible
+    fields.
+
+    Restricting to schema fields inherits DjangoQL's own exclusions (e.g. the
+    password field is never exposed), so we never surface a sensitive column.
+    Prefers a field literally named ``name``, else the first string field.
+    Returns None when the related model exposes no string field.
+    """
+    fields = schema.models.get(related_label, {})
+    name_field = fields.get('name')
+    if name_field is not None and getattr(name_field, 'type', None) == 'str':
+        return 'name'
+    for fname, f in fields.items():
+        if getattr(f, 'type', None) == 'str':
+            return fname
+    return None
+
+
+def _distinct_values(related_model, field_name, limit):
+    """Distinct string values of ``field_name``; None when over the limit.
+
+    ``limit=None`` forces emission (no cardinality gate), capped at
+    MAX_SUGGESTED_VALUES. Any DB/field error yields None so schema description
+    never breaks.
+    """
+    try:
+        qs = (
+            related_model.objects.order_by(field_name)
+            .values_list(field_name, flat=True)
+            .distinct()
+        )
+        if limit is None:
+            rows = list(qs[:MAX_SUGGESTED_VALUES])
+        else:
+            rows = list(qs[: limit + 1])
+            if len(rows) > limit:
+                return None
+        return [str(v) for v in rows if v is not None] or None
+    except Exception:
+        return None
+
+
+def _match_field_entry(related_model, relation_name, match_field, limit):
+    """Enrichment dict for a single identifying field, or {} if nothing fits."""
+    if match_field is None:
+        return {}
+    values = _distinct_values(related_model, match_field, limit)
+    if not values:
+        return {}
+    return {
+        'match_field': match_field,
+        'related_values': values,
+        'note': 'match by traversal: {}.{} = <value>'.format(
+            relation_name,
+            match_field,
+        ),
+    }
+
+
+def _relation_values(schema, field, name, max_fk_options):
+    """Concrete match values for a relation, gated by cardinality.
+
+    Auto mode only (extended with explicit fk_options in a later task): skips
+    sensitive target models and relations over the distinct-value threshold.
+    Returns {} when nothing should be emitted; never raises.
+    """
+    related_model = field.related_model
+    if max_fk_options <= 0:
+        return {}
+    if related_model._meta.app_label in SENSITIVE_TARGET_APP_LABELS:
+        return {}
+    match_field = _default_match_field(schema, field.relation)
+    if match_field is None:
+        return {}
+    return _match_field_entry(
+        related_model,
+        name,
+        match_field,
+        limit=max_fk_options,
+    )
+
+
+def describe_field(name, field, schema=None, max_fk_options=50):
     """Describe a single schema field as a plain, JSON-serializable dict."""
     entry = {
         'type': field.type,
@@ -150,6 +242,8 @@ def describe_field(name, field):
             'traverse into the related model with a dot, e.g. '
             '%s.<field>; or compare the relation itself to None' % name
         )
+        if schema is not None:
+            entry.update(_relation_values(schema, field, name, max_fk_options))
     else:
         op = '~' if field.type == 'str' else '='
         entry['example'] = '{} {} {}'.format(
@@ -189,7 +283,7 @@ def _field_options(field):
     return [str(o) for o in options[:MAX_SUGGESTED_VALUES]] or None
 
 
-def describe_schema_for_llm(schema):
+def describe_schema_for_llm(schema, max_fk_options=50):
     """Return a JSON-serializable description of ``schema`` for an LLM prompt.
 
     ``schema`` is an *instance* of a :class:`~djangoql.schema.DjangoQLSchema`
@@ -200,7 +294,12 @@ def describe_schema_for_llm(schema):
     models = {}
     for model_label, fields in schema.models.items():
         models[model_label] = {
-            name: describe_field(name, field)
+            name: describe_field(
+                name,
+                field,
+                schema=schema,
+                max_fk_options=max_fk_options,
+            )
             for name, field in fields.items()
             if field.suggested
         }

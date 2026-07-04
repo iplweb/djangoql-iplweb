@@ -184,3 +184,49 @@ class DjangoqlSchemaCommandTest(TestCase):
         # indent=0 -> newlines but no leading spaces; default -> indented
         compact = self._run('core.Book', '--indent', '0')
         self.assertNotIn('\n  "start_model"', compact)
+
+
+class RelationValuesTest(TestCase):
+    def _book(self, name):
+        author = User.objects.create(username='u-%s' % name)
+        return Book.objects.create(name=name, author=author)
+
+    def test_auto_emits_related_values_for_small_relation(self):
+        # similar_books -> Book (non-sensitive). A handful of books means few
+        # distinct names, so auto mode should surface them.
+        for n in ('Dune', 'Solaris', 'It'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertEqual('name', similar['match_field'])
+        self.assertEqual(
+            {'Dune', 'Solaris', 'It'}, set(similar['related_values'])
+        )
+
+    def test_auto_skips_relation_over_threshold(self):
+        for n in ('a', 'b', 'c'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book), max_fk_options=2)
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
+    def test_max_fk_options_zero_disables_auto(self):
+        self._book('Dune')
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book), max_fk_options=0)
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
+    def test_auto_never_touches_sensitive_target_model(self):
+        # author -> auth.User is sensitive: no values, and never the password.
+        self._book('Dune')
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertNotIn('related_values', author)
+        self.assertNotIn('password', json.dumps(author))
+
+    def test_default_match_field_prefers_visible_str_field(self):
+        # The heuristic must pick from schema-visible fields (never password).
+        from djangoql.llm import _default_match_field
+
+        schema = DjangoQLSchema(Book)
+        self.assertEqual('name', _default_match_field(schema, 'core.book'))
