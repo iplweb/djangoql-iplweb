@@ -134,10 +134,10 @@ def _field_metadata(field):
         return {}
     meta = {}
     verbose = getattr(model_field, 'verbose_name', None)
-    if verbose:
+    if verbose is not None:
         verbose = str(verbose).strip()
         default = name.replace('_', ' ').strip()
-        if verbose.lower() != default.lower():
+        if verbose and verbose.lower() != default.lower():
             meta['label'] = verbose
     help_text = getattr(model_field, 'help_text', None)
     if help_text and str(help_text).strip():
@@ -151,15 +151,21 @@ def _default_match_field(schema, related_label):
 
     Restricting to schema fields inherits DjangoQL's own exclusions (e.g. the
     password field is never exposed), so we never surface a sensitive column.
-    Prefers a field literally named ``name``, else the first string field.
-    Returns None when the related model exposes no string field.
+    Also skips fields with ``suggested`` set to False, since those are hidden
+    from the emitted schema description too. Prefers a field literally named
+    ``name``, else the first string field. Returns None when the related
+    model exposes no (suggested) string field.
     """
     fields = schema.models.get(related_label, {})
     name_field = fields.get('name')
-    if name_field is not None and getattr(name_field, 'type', None) == 'str':
+    if (
+        name_field is not None
+        and getattr(name_field, 'suggested', True)
+        and getattr(name_field, 'type', None) == 'str'
+    ):
         return 'name'
     for fname, f in fields.items():
-        if getattr(f, 'type', None) == 'str':
+        if getattr(f, 'suggested', True) and getattr(f, 'type', None) == 'str':
             return fname
     return None
 
@@ -223,12 +229,13 @@ def _match_fields_entry(related_model, relation_name, match_fields, limit):
             values[f] = v
     if not values:
         return {}
+    emitted_fields = [f for f in match_fields if f in values]
     return {
-        'match_fields': [f for f in match_fields if f in values],
+        'match_fields': emitted_fields,
         'related_values': values,
         'note': 'match by traversal, e.g. {}.{} = <value>'.format(
             relation_name,
-            match_fields[0],
+            emitted_fields[0],
         ),
     }
 

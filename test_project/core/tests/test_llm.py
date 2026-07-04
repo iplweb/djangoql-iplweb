@@ -242,6 +242,25 @@ class RelationValuesTest(TestCase):
         schema = DjangoQLSchema(Book)
         self.assertEqual('name', _default_match_field(schema, 'core.book'))
 
+    def test_default_match_field_skips_unsuggested_fields(self):
+        from djangoql.llm import _default_match_field
+
+        class _StubField:
+            def __init__(self, ftype, suggested=True):
+                self.type = ftype
+                self.suggested = suggested
+
+        class _StubSchema:
+            models = {
+                'x.y': {
+                    'secret': _StubField('str', suggested=False),
+                    'label': _StubField('str', suggested=True),
+                },
+            }
+
+        # 'secret' comes first but is hidden -> must fall through to 'label'
+        self.assertEqual('label', _default_match_field(_StubSchema(), 'x.y'))
+
     def test_fk_options_name_overrides_sensitive_exclusion(self):
         User.objects.create(username='ada')
         User.objects.create(username='alan')
@@ -286,6 +305,20 @@ class RelationValuesTest(TestCase):
         author = bundle['models']['core.book']['author']
         self.assertNotIn('related_values', author)
         self.assertNotIn('related_examples', author)
+
+    def test_fk_options_false_on_nonsensitive_relation(self):
+        # author -> auth.User is sensitive, so auto mode would exclude it
+        # regardless of the False spec; similar_books -> Book is not, so an
+        # empty result here can only be explained by the False dispatch arm.
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class OffSchema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': False}}
+
+        bundle = describe_schema_for_llm(OffSchema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
 
     def test_fk_options_true_ignores_threshold(self):
         # Test on similar_books -> Book, whose default identifying field is
