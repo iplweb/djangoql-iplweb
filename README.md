@@ -41,6 +41,7 @@ See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 - **Pretty-print / formatting** — re-indent a query via `format_query()` or the `…/format/` endpoint
 - **Per-branch record counts** — see how many rows each sub-expression matches via `explain()` or the `…/explain/` endpoint
 - **Syntax highlighting** — a tokenizer (`DjangoQLHighlight.tokenize`) plus a lightweight, restyleable overlay; no palette or editor imposed
+- **Describe a schema for an LLM** — `describe_schema_for_llm()` (and the `djangoql_describe_schema_for_llm` command) emit the full search space as JSON, ready to teach a model to generate valid DjangoQL
 
 ## Installation
 
@@ -78,6 +79,7 @@ The site is built with MkDocs from the [`docs/`](docs/) directory. Key pages:
 - [Django admin integration](https://iplweb.github.io/djangoql-iplweb/admin/) — `DjangoQLSearchMixin` and admin search modes
 - [Language reference](https://iplweb.github.io/djangoql-iplweb/language/) — query syntax, operators, and examples
 - [Schema & custom fields](https://iplweb.github.io/djangoql-iplweb/schema/) — restrict searchable models/fields, custom search fields
+- [Describe schema for an LLM](https://iplweb.github.io/djangoql-iplweb/llm-schema/) — emit the search space as JSON to teach a model to generate DjangoQL
 - [Derived fields](https://iplweb.github.io/djangoql-iplweb/derived-fields/) — date/time parts, relation aggregates, custom search logic
 - [Outside the admin](https://iplweb.github.io/djangoql-iplweb/queryset/) — `DjangoQLQuerySet` and `apply_search()`
 - [Multi-line queries](https://iplweb.github.io/djangoql-iplweb/multiline-queries/) — `Shift+Enter` newline support

@@ -31,6 +31,7 @@ nav:
   - Multi-line queries: multiline-queries.md
   - Pretty-print / formatting: pretty-print.md
   - Schema & custom fields: schema.md
+  - Describe schema for an LLM: llm-schema.md
   - Derived fields: derived-fields.md
   - django-autocomplete-light: integrating-django-autocomplete-light.md
   - Empty-result breakdown: empty-result-breakdown.md
