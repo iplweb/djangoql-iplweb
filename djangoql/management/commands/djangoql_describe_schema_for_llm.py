@@ -52,6 +52,14 @@ class Command(BaseCommand):
             help='JSON indentation (default: 2). Use 0 for the most compact '
             'multi-line output.',
         )
+        parser.add_argument(
+            '--max-fk-options',
+            type=int,
+            default=50,
+            help='Max distinct related-model values to embed per relation '
+            '(default: 50). 0 disables automatic relation values; explicit '
+            'fk_options on the schema still apply.',
+        )
 
     def handle(self, *args, **options):
         model = self._resolve_model(options['model'])
@@ -63,7 +71,10 @@ class Command(BaseCommand):
                 'Could not build %s for %s: %s'
                 % (schema_cls.__name__, options['model'], e),
             )
-        bundle = describe_schema_for_llm(schema)
+        bundle = describe_schema_for_llm(
+            schema,
+            max_fk_options=options['max_fk_options'],
+        )
         indent = options['indent'] or None
         self.stdout.write(
             json.dumps(bundle, indent=indent, ensure_ascii=False, default=str),

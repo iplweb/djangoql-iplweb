@@ -185,6 +185,17 @@ class DjangoqlSchemaCommandTest(TestCase):
         compact = self._run('core.Book', '--indent', '0')
         self.assertNotIn('\n  "start_model"', compact)
 
+    def test_max_fk_options_flag_is_passed_through(self):
+        # With the gate at 0, auto FK values are disabled; similar_books
+        # (a non-sensitive relation) must carry no related_values.
+        Book.objects.create(
+            name='Dune',
+            author=User.objects.create(username='ada'),
+        )
+        data = json.loads(self._run('core.Book', '--max-fk-options', '0'))
+        similar = data['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
 
 class RelationValuesTest(TestCase):
     def _book(self, name):
