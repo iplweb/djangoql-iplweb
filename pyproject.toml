@@ -60,7 +60,11 @@ Repository = "https://github.com/iplweb/djangoql-iplweb"
 Issues = "https://github.com/iplweb/djangoql-iplweb/issues"
 
 [tool.setuptools]
-packages = ["djangoql"]
+packages = [
+    "djangoql",
+    "djangoql.management",
+    "djangoql.management.commands",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "djangoql.__version__"}
