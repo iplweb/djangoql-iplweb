@@ -1,3 +1,21 @@
+0.28.0 (2026-07-04)
+-------------------
+
+* **LLM-ready schema description:** a new ``djangoql.llm.describe_schema_for_llm``
+  helper turns any ``DjangoQLSchema`` into a compact, self-contained JSON
+  description of the whole search space — every model, field, type, nullability,
+  related model (the traversable "dependent" fields), the operators legal for
+  each field type, concrete suggested values, plus a grammar cheat-sheet and
+  worked examples. Drop it into an LLM prompt to teach a model to generate valid
+  DjangoQL. Object-picker fields correctly advertise only ``= / != / in /
+  not in`` despite their string type.
+* **``djangoql_describe_schema_for_llm`` management command:** prints that
+  description as JSON for any model, e.g.
+  ``python manage.py djangoql_describe_schema_for_llm library.Book``. Supports
+  ``--schema`` (use the exact ``DjangoQLSchema`` subclass your admin/view
+  exposes) and ``--indent``. Available in any project with ``djangoql`` in
+  ``INSTALLED_APPS``.
+
 0.27.0 (2026-06-05)
 -------------------
 

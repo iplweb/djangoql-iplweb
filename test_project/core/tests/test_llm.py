@@ -1,0 +1,159 @@
+"""Tests for the LLM schema-description helper and its management command.
+
+``describe_schema_for_llm`` turns a DjangoQLSchema into a self-contained,
+machine-readable description of the whole search space (fields, types,
+relations, allowed operators, examples) suitable for an LLM prompt. The
+``djangoql_describe_schema_for_llm`` command prints that description as JSON.
+"""
+
+import json
+from io import StringIO
+
+from django.contrib.auth.models import User
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import TestCase
+
+from djangoql.extras import AutocompleteSchemaMixin
+from djangoql.llm import describe_schema_for_llm
+from djangoql.parser import DjangoQLParser
+from djangoql.schema import DjangoQLSchema
+
+from ..models import Book
+
+
+class AuthorPickerSchema(AutocompleteSchemaMixin, DjangoQLSchema):
+    include = (Book, User)
+    autocomplete = {
+        Book: {
+            'author': {
+                'queryset': lambda s: User.objects.filter(
+                    username__icontains=s,
+                ),
+                'search_fields': ['username'],
+            },
+        },
+    }
+
+
+class ExcludeUserSchema(DjangoQLSchema):
+    exclude = ()
+
+    def get_fields(self, model):
+        if model == Book:
+            return [
+                'name',
+                'rating',
+                'is_published',
+                'author',
+                'published_date',
+            ]
+        return super().get_fields(model)
+
+
+class DescribeSchemaForLLMTest(TestCase):
+    def setUp(self):
+        self.bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+
+    def test_top_level_keys(self):
+        for key in ('start_model', 'grammar', 'models', 'examples'):
+            self.assertIn(key, self.bundle)
+
+    def test_start_model_is_the_root(self):
+        self.assertEqual('core.book', self.bundle['start_model'])
+
+    def test_models_contains_root_and_related(self):
+        models = self.bundle['models']
+        self.assertIn('core.book', models)
+        # author is a FK to auth.User -> the related model must be reachable
+        self.assertIn('auth.user', models)
+
+    def test_scalar_field_carries_type_and_operators(self):
+        rating = self.bundle['models']['core.book']['rating']
+        self.assertEqual('float', rating['type'])
+        self.assertIn('>', rating['operators'])
+        self.assertIn('<=', rating['operators'])
+
+    def test_str_field_offers_contains_operator(self):
+        name = self.bundle['models']['core.book']['name']
+        self.assertEqual('str', name['type'])
+        self.assertIn('~', name['operators'])
+        self.assertIn('startswith', name['operators'])
+
+    def test_bool_field_only_equality_operators(self):
+        is_published = self.bundle['models']['core.book']['is_published']
+        self.assertEqual('bool', is_published['type'])
+        self.assertEqual({'=', '!='}, set(is_published['operators']))
+
+    def test_relation_field_points_at_related_model(self):
+        author = self.bundle['models']['core.book']['author']
+        self.assertEqual('relation', author['type'])
+        self.assertEqual('auth.user', author['relates_to'])
+
+    def test_nullable_flag_is_exposed(self):
+        # published_date is null=True on the model
+        self.assertTrue(
+            self.bundle['models']['core.book']['published_date']['nullable'],
+        )
+
+    def test_object_reference_field_restricts_operators(self):
+        # A picker (object_reference) matches a related row by pk, so despite
+        # its string type it must only offer = / != / in / not in -- never
+        # ~ / startswith, which would mislead the LLM.
+        bundle = describe_schema_for_llm(AuthorPickerSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertTrue(author.get('object_reference'))
+        self.assertEqual(['=', '!=', 'in', 'not in'], author['operators'])
+
+    def test_grammar_warns_there_is_no_standalone_not(self):
+        # A real footgun: `not x = y` is a syntax error in DjangoQL.
+        self.assertIn('negation', self.bundle['grammar'])
+
+    def test_examples_actually_parse(self):
+        # Whatever we teach the LLM by example must itself be valid DjangoQL.
+        parser = DjangoQLParser()
+        for query in self.bundle['examples']:
+            parser.parse(query)  # raises DjangoQLError on failure
+
+
+class DjangoqlSchemaCommandTest(TestCase):
+    def _run(self, *args):
+        out = StringIO()
+        call_command('djangoql_describe_schema_for_llm', *args, stdout=out)
+        return out.getvalue()
+
+    def test_outputs_valid_json_for_a_model(self):
+        data = json.loads(self._run('core.Book'))
+        self.assertEqual('core.book', data['start_model'])
+        self.assertIn('rating', data['models']['core.book'])
+
+    def test_unknown_model_raises_command_error(self):
+        with self.assertRaises(CommandError):
+            self._run('core.Nonexistent')
+
+    def test_bad_model_format_raises_command_error(self):
+        with self.assertRaises(CommandError):
+            self._run('BookWithoutAppLabel')
+
+    def test_custom_schema_limits_the_fields(self):
+        data = json.loads(
+            self._run(
+                'core.Book',
+                '--schema',
+                'core.tests.test_llm.ExcludeUserSchema',
+            ),
+        )
+        book_fields = set(data['models']['core.book'].keys())
+        self.assertEqual(
+            {'name', 'rating', 'is_published', 'author', 'published_date'},
+            book_fields,
+        )
+
+    def test_bad_schema_path_raises_command_error(self):
+        with self.assertRaises(CommandError):
+            self._run('core.Book', '--schema', 'no.such.Schema')
+
+    def test_indent_option_is_respected(self):
+        # indent=0 -> newlines but no leading spaces; default -> indented
+        compact = self._run('core.Book', '--indent', '0')
+        self.assertNotIn('\n  "start_model"', compact)
