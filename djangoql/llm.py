@@ -205,14 +205,107 @@ def _match_field_entry(related_model, relation_name, match_field, limit):
     }
 
 
-def _relation_values(schema, field, name, max_fk_options):
-    """Concrete match values for a relation, gated by cardinality.
+def _fk_spec(schema, field, name):
+    """Resolve the fk_options entry for ``name`` on ``field.model``.
 
-    Auto mode only (extended with explicit fk_options in a later task): skips
-    sensitive target models and relations over the distinct-value threshold.
+    Returns the sentinel ``_AUTO`` when there is no entry (auto mode).
+    """
+    fk_options = getattr(schema, 'fk_options', None) or {}
+    return fk_options.get(field.model, {}).get(name, _AUTO)
+
+
+def _match_fields_entry(related_model, relation_name, match_fields, limit):
+    """Enrichment dict for several identifying fields, or {} if none fit."""
+    values = {}
+    for f in match_fields:
+        v = _distinct_values(related_model, f, limit)
+        if v:
+            values[f] = v
+    if not values:
+        return {}
+    return {
+        'match_fields': [f for f in match_fields if f in values],
+        'related_values': values,
+        'note': 'match by traversal, e.g. {}.{} = <value>'.format(
+            relation_name,
+            match_fields[0],
+        ),
+    }
+
+
+def _str_examples(related_model, limit):
+    """Up to ``limit`` ``str(obj)`` rows of the related model, or None.
+
+    ``limit=None`` forces emission capped at MAX_SUGGESTED_VALUES. Gated by
+    row count (str() cannot be made distinct in SQL). Any error yields None.
+    """
+    try:
+        if limit is None:
+            rows = related_model.objects.all()[:MAX_SUGGESTED_VALUES]
+        else:
+            if related_model.objects.count() > limit:
+                return None
+            rows = related_model.objects.all()[:limit]
+        return [str(o) for o in rows] or None
+    except Exception:
+        return None
+
+
+def _examples_entry(related_model, relation_name, limit):
+    """Enrichment dict of str(obj) examples for a relation, or {}."""
+    examples = _str_examples(related_model, limit)
+    if not examples:
+        return {}
+    return {
+        'related_examples': examples,
+        'note': (
+            'these are example rows of the related model; match by '
+            'traversing to an identifying field, e.g. %s.<field> = <value>'
+            % relation_name
+        ),
+    }
+
+
+def _relation_values(schema, field, name, max_fk_options):
+    """Concrete match values for a relation, honouring fk_options.
+
+    Dispatch on the schema's fk_options entry:
+      - False        -> nothing (no query)
+      - True         -> force the default field, ignore the threshold
+      - 'field'      -> that field's distinct values, gated by threshold
+      - ['a', 'b']   -> each field's distinct values, gated by threshold
+      - '__str__'    -> str(obj) examples, gated by row count
+      - no entry     -> auto: default field, skip sensitive models / over-limit
     Returns {} when nothing should be emitted; never raises.
     """
     related_model = field.related_model
+    spec = _fk_spec(schema, field, name)
+
+    if spec is False:
+        return {}
+    if spec is True:
+        match_field = _default_match_field(schema, field.relation)
+        if match_field is None:
+            return _examples_entry(related_model, name, limit=None)
+        return _match_field_entry(related_model, name, match_field, limit=None)
+    if isinstance(spec, str) and spec != '__str__':
+        return _match_field_entry(
+            related_model,
+            name,
+            spec,
+            limit=max_fk_options,
+        )
+    if isinstance(spec, (list, tuple)):
+        return _match_fields_entry(
+            related_model,
+            name,
+            list(spec),
+            limit=max_fk_options,
+        )
+    if spec == '__str__':
+        return _examples_entry(related_model, name, limit=max_fk_options)
+
+    # spec is _AUTO
     if max_fk_options <= 0:
         return {}
     if related_model._meta.app_label in SENSITIVE_TARGET_APP_LABELS:

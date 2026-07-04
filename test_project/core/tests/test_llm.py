@@ -230,3 +230,64 @@ class RelationValuesTest(TestCase):
 
         schema = DjangoQLSchema(Book)
         self.assertEqual('name', _default_match_field(schema, 'core.book'))
+
+    def test_fk_options_name_overrides_sensitive_exclusion(self):
+        User.objects.create(username='ada')
+        User.objects.create(username='alan')
+
+        class ForcedSchema(DjangoQLSchema):
+            fk_options = {Book: {'author': 'username'}}
+
+        bundle = describe_schema_for_llm(ForcedSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertEqual('username', author['match_field'])
+        self.assertEqual({'ada', 'alan'}, set(author['related_values']))
+
+    def test_fk_options_list_emits_values_per_field(self):
+        User.objects.create(username='ada', email='ada@x.io')
+
+        class ListSchema(DjangoQLSchema):
+            fk_options = {Book: {'author': ['username', 'email']}}
+
+        bundle = describe_schema_for_llm(ListSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertEqual(['username', 'email'], author['match_fields'])
+        self.assertEqual(['ada'], author['related_values']['username'])
+        self.assertEqual(['ada@x.io'], author['related_values']['email'])
+
+    def test_fk_options_str_emits_related_examples(self):
+        User.objects.create(username='ada')
+
+        class StrSchema(DjangoQLSchema):
+            fk_options = {Book: {'author': '__str__'}}
+
+        bundle = describe_schema_for_llm(StrSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertEqual(['ada'], author['related_examples'])
+
+    def test_fk_options_false_emits_nothing(self):
+        User.objects.create(username='ada')
+
+        class OffSchema(DjangoQLSchema):
+            fk_options = {Book: {'author': False}}
+
+        bundle = describe_schema_for_llm(OffSchema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertNotIn('related_values', author)
+        self.assertNotIn('related_examples', author)
+
+    def test_fk_options_true_ignores_threshold(self):
+        # Test on similar_books -> Book, whose default identifying field is
+        # deterministically 'name'. (For auth.User the default would be the
+        # first alphabetical string field, 'email', not 'username'.)
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class ForceSchema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': True}}
+
+        # threshold of 1 would normally skip two distinct names
+        bundle = describe_schema_for_llm(ForceSchema(Book), max_fk_options=1)
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertEqual('name', similar['match_field'])
+        self.assertEqual({'Dune', 'Solaris'}, set(similar['related_values']))
