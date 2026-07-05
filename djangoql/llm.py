@@ -25,6 +25,8 @@ models that powers autocomplete); this module only layers the operator matrix,
 examples and grammar notes on top.
 """
 
+import logging
+
 from django.core.exceptions import FieldDoesNotExist
 
 from .extras import (
@@ -35,6 +37,9 @@ from .extras import (
     TimeExtractField,
 )
 from .schema import RelationField
+
+
+logger = logging.getLogger(__name__)
 
 
 #: Operators that make sense per field ``type``. Derived from
@@ -230,6 +235,27 @@ def _field_metadata(field):
     return meta
 
 
+#: Preferred names for a relation's identifying field (EN + PL), in priority
+#: order. Checked before falling back to "first suggested str field", so
+#: auto-mode emits a readable dictionary identifier (nazwa/skrot/username)
+#: instead of whatever happens to sort first alphabetically (email, an
+#: internal enum column).
+_PREFERRED_MATCH_FIELDS = (
+    'name',
+    'nazwa',
+    'title',
+    'tytul',
+    'label',
+    'skrot',
+    'symbol',
+    'kod',
+    'code',
+    'slug',
+    'username',
+    'login',
+)
+
+
 def _default_match_field(schema, related_label):
     """Pick an identifying field among the related model's schema-visible
     fields.
@@ -237,20 +263,26 @@ def _default_match_field(schema, related_label):
     Restricting to schema fields inherits DjangoQL's own exclusions (e.g. the
     password field is never exposed), so we never surface a sensitive column.
     Also skips fields with ``suggested`` set to False, since those are hidden
-    from the emitted schema description too. Prefers a field literally named
-    ``name``, else the first string field. Returns None when the related
-    model exposes no (suggested) string field.
+    from the emitted schema description too. Prefers, in priority order, a
+    field whose name appears in :data:`_PREFERRED_MATCH_FIELDS` (e.g.
+    ``name``, ``nazwa``, ``username``); else the first (suggested) string
+    field. Returns None when the related model exposes no (suggested) string
+    field.
     """
     fields = schema.models.get(related_label, {})
-    name_field = fields.get('name')
-    if (
-        name_field is not None
-        and getattr(name_field, 'suggested', True)
-        and getattr(name_field, 'type', None) == 'str'
-    ):
-        return 'name'
+
+    def _ok(f):
+        return (
+            f is not None
+            and getattr(f, 'suggested', True)
+            and getattr(f, 'type', None) == 'str'
+        )
+
+    for pref in _PREFERRED_MATCH_FIELDS:
+        if _ok(fields.get(pref)):
+            return pref
     for fname, f in fields.items():
-        if getattr(f, 'suggested', True) and getattr(f, 'type', None) == 'str':
+        if _ok(f):
             return fname
     return None
 
@@ -260,7 +292,9 @@ def _distinct_values(related_model, field_name, limit):
 
     ``limit=None`` forces emission (no cardinality gate), capped at
     MAX_SUGGESTED_VALUES. Any DB/field error yields None so schema description
-    never breaks.
+    never breaks -- the error is logged (warning, with traceback) so a dead
+    DB or a bad field name doesn't silently vanish into a schema with no
+    ``related_values``.
     """
     try:
         qs = (
@@ -276,6 +310,13 @@ def _distinct_values(related_model, field_name, limit):
                 return None
         return [str(v) for v in rows if v is not None] or None
     except Exception:
+        logger.warning(
+            'describe_schema_for_llm: nie udało się pobrać wartości '
+            '%s.%s -- pomijam (schemat bez related_values dla tej relacji)',
+            related_model._meta.label,
+            field_name,
+            exc_info=True,
+        )
         return None
 
 
@@ -317,7 +358,9 @@ def _str_examples(related_model, limit):
     """Up to ``limit`` ``str(obj)`` rows of the related model, or None.
 
     ``limit=None`` forces emission capped at MAX_SUGGESTED_VALUES. Gated by
-    row count (str() cannot be made distinct in SQL). Any error yields None.
+    row count (str() cannot be made distinct in SQL). Any error yields None
+    -- logged (warning, with traceback) so a dead DB doesn't silently vanish
+    into a schema with no ``related_examples``.
     """
     try:
         if limit is None:
@@ -328,6 +371,12 @@ def _str_examples(related_model, limit):
             rows = related_model.objects.all()[:limit]
         return [str(o) for o in rows] or None
     except Exception:
+        logger.warning(
+            'describe_schema_for_llm: nie udało się pobrać przykładów '
+            '%s -- pomijam (schemat bez related_examples dla tej relacji)',
+            related_model._meta.label,
+            exc_info=True,
+        )
         return None
 
 
