@@ -28,6 +28,19 @@ agregaty. Zero utraty możliwości, ~13× mniej wpisów dla dat.
   (ma atrybut `.part`), `DateExtractField(DateField)` (`__date`),
   `TimeExtractField` (`__time`), `AggregateField(IntField)` z podklasą
   `CountField` (`__count`).
+- **Wszystkie te klasy mają domyślnie `suggested = False`** (ukryte z
+  autocomplete; extras.py). Ponieważ `_build_schema_ir` emituje tylko pola z
+  `field.suggested`, w stockowym schemacie te pola **już są nieobecne** w opisie
+  dla LLM — ale nadal **istnieją w `schema.models`** (pełny słownik pól,
+  niefiltrowany po `suggested`; potwierdzone schema.py:601-605). Wniosek:
+  - **Wykrywanie** zdolności musi skanować `schema.models` (WSZYSTKIE pola,
+    także `suggested=False`), nie przefiltrowany zbiór emisji.
+  - Dla stockowego schematu wartością funkcji jest **udostępnienie w legendzie
+    możliwości, której dziś LLM w ogóle nie widzi** (`__year`/`__count` są
+    ukryte, więc model nie wie, że może ich użyć).
+  - Dla schematu, który *pokazuje* te pola (ustawia `suggested=True`, jak w
+    aplikacji BPP), dochodzi **odchudzenie** — dlatego emisja musi **jawnie
+    wykluczać** instancje tych klas (a nie polegać wyłącznie na `suggested`).
 - **Tylko `<rel>__count` jest realnym polem** w schemacie
   (`AggregateSchemaMixin.get_fields`, extras.py:288-300). Numeryczne agregaty
   (`__sum/avg/min/max`) NIE są polami — są syntetyzowane na żądanie przez
@@ -41,10 +54,15 @@ agregaty. Zero utraty możliwości, ~13× mniej wpisów dla dat.
 
 ## Architektura (na bazie IR z kompresji)
 
-1. **`_build_schema_ir`** — pomija instancje `DatePartField` / `DateExtractField`
-   / `TimeExtractField` / `AggregateField` (nie stają się wpisami w `models`).
-   Przy przejściu zbiera **fakty o zdolnościach** schematu do nowej gałęzi IR
-   `capabilities`:
+1. **`_build_schema_ir`** — dwie zmiany:
+   - **Emisja**: warunek zmienia się z `if field.suggested` na
+     `if field.suggested and not isinstance(field, _DERIVED_FIELD_CLASSES)`, gdzie
+     `_DERIVED_FIELD_CLASSES = (DatePartField, DateExtractField,
+     TimeExtractField, AggregateField)`. Jawnie wyklucza pola pochodne także,
+     gdy schemat ustawił im `suggested=True`.
+   - **Wykrywanie**: osobny przebieg po **WSZYSTKICH** polach `schema.models`
+     (nie po zbiorze emisji) zbiera **fakty o zdolnościach** do nowej gałęzi IR
+     `capabilities`:
    - `date_parts`: zbiór nazw części z obecnych `DatePartField.part`, które NIE
      są time-parts;
    - `time_parts`: zbiór obecnych części z `hour/minute/second`;
@@ -108,13 +126,18 @@ Plik `test_project/core/tests/test_llm.py`. Wykorzystać schematy z
 w razie potrzeby zdefiniować lokalny schemat testowy na `Book`, który ma pola
 daty — `written`/`published_date` — i relację do-wielu — `similar_books`):
 
-- Pola pochodne (`written__year`, `similar_books__count`) **NIE** są w
-  `models`; pole bazowe `written` (datetime) i relacja `similar_books` **są**
-  obecne raz.
-- Legenda `date`/`datetime` ma klucz `lookups` z obecnymi częściami;
-  `relation` ma `aggregates` z `__count` i wzorcem numerycznym.
+- Schemat z mixinami (pola pochodne `suggested=False`): legenda `date`/
+  `datetime` ma klucz `lookups` z obecnymi częściami; `relation` ma
+  `aggregates` z `__count` i wzorcem numerycznym — czyli **możliwość zostaje
+  udostępniona**, mimo że same pola były i pozostają ukryte.
+- Pole bazowe `written` (datetime) i relacja `similar_books` **są** obecne raz;
+  pochodne (`written__year`, `similar_books__count`) **NIE** są w `models`.
+- **Jawne wykluczenie**: schemat, który ustawia pochodnej `suggested=True`
+  (np. `DatePartField('written','year')` z `suggested=True` doklejone w
+  `get_fields`), i tak **nie** ma jej w `models` (wykluczenie przez isinstance,
+  nie przez `suggested`).
 - Schemat BEZ tych mixinów (`DjangoQLSchema(Book)`) **nie** dostaje sekcji
-  `lookups`/`aggregates` (gating).
+  `lookups`/`aggregates` (gating — puste `capabilities`).
 - Compact: możliwości opisane w nagłówku raz; brak linii `written__year` /
   `similar_books__count`.
 - `capabilities`/klasyfikacja: time-parts (`hour/minute/second`) trafiają do
