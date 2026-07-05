@@ -58,6 +58,35 @@ class BookCustomSearchSchema(DjangoQLSchema):
             ]
 
 
+class OnlyBookNameSchema(DjangoQLSchema):
+    include_fields = {Book: ['name', 'is_published']}
+
+
+class BookWithoutGenreSchema(DjangoQLSchema):
+    exclude_fields = {Book: ['genre', 'price']}
+
+
+class FieldFilteringTest(TestCase):
+    def _book_fields(self, schema):
+        return set(serializer.serialize(schema)['models']['core.book'].keys())
+
+    def test_include_fields_is_allowlist(self):
+        fields = self._book_fields(OnlyBookNameSchema(Book))
+        self.assertEqual(fields, {'name', 'is_published'})
+
+    def test_exclude_fields_is_denylist(self):
+        fields = self._book_fields(BookWithoutGenreSchema(Book))
+        self.assertNotIn('genre', fields)
+        self.assertNotIn('price', fields)
+        self.assertIn('name', fields)
+        self.assertIn('rating', fields)
+
+    def test_unfiltered_model_keeps_all_fields(self):
+        default = self._book_fields(DjangoQLSchema(Book))
+        filtered = self._book_fields(BookWithoutGenreSchema(Book))
+        self.assertEqual(default - filtered, {'genre', 'price'})
+
+
 class DjangoQLSchemaTest(TestCase):
     def all_models(self):
         models = []
