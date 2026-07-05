@@ -544,9 +544,51 @@ def _compact_field(name, facts, width):
     return '{}  {}'.format(padded, '  '.join(parts))
 
 
+def _compact_capability_lines(caps):
+    """Header comment lines describing derived-lookup capabilities, or []."""
+    lines = []
+    if caps['date_parts']:
+        lines.append(
+            '# date fields also: <field>__<part> (int): '
+            + ', '.join(caps['date_parts'])
+        )
+    dt = []
+    if caps['time_parts']:
+        dt.append('<field>__<part>: ' + ', '.join(caps['time_parts']))
+    if caps['has_date_extract']:
+        dt.append('<field>__date')
+    if caps['has_time_extract']:
+        dt.append('<field>__time')
+    if dt:
+        lines.append('# datetime fields also: ' + '; '.join(dt))
+    if caps['relation_count']:
+        lines.append(
+            '# to-many relations: <rel>__count; numeric via dot '
+            '<rel>.<field>__sum|avg|min|max'
+        )
+    return lines
+
+
 def _render_compact(ir):
     """Render the IR as a terse text block, one line per field."""
     lines = list(_COMPACT_HEADER)
+    cap_lines = _compact_capability_lines(
+        ir.get(
+            'capabilities',
+            {
+                'date_parts': [],
+                'time_parts': [],
+                'has_date_extract': False,
+                'has_time_extract': False,
+                'relation_count': False,
+            },
+        )
+    )
+    if cap_lines:
+        blank = lines.pop() if lines and lines[-1] == '' else None
+        lines.extend(cap_lines)
+        if blank is not None:
+            lines.append(blank)
     lines.append('start model: {}'.format(ir['start_model']))
     lines.append('')
     for label, fields in ir['models'].items():
@@ -556,6 +598,43 @@ def _render_compact(ir):
             lines.append('  ' + _compact_field(name, facts, width))
         lines.append('')
     return '\n'.join(lines).rstrip() + '\n'
+
+
+def _apply_capabilities_to_legend(legend, caps):
+    """Add type-level `lookups`/`aggregates` notes for detected derived fields.
+
+    Only touches legend entries whose capability was actually detected, so a
+    schema without the date-parts / aggregate mixins gains nothing.
+    """
+    date_parts = caps['date_parts']
+    time_parts = caps['time_parts']
+    if date_parts and 'date' in legend:
+        legend['date']['lookups'] = (
+            'also <field>__<part> (integer): %s. e.g. utworzono__year = 2021'
+            % ', '.join(date_parts)
+        )
+    dt_bits = []
+    if date_parts or time_parts:
+        dt_bits.append(
+            '<field>__<part> (integer): %s' % ', '.join(date_parts + time_parts)
+        )
+    if caps['has_date_extract']:
+        dt_bits.append('<field>__date (date)')
+    if caps['has_time_extract']:
+        dt_bits.append('<field>__time (time)')
+    if dt_bits and 'datetime' in legend:
+        legend['datetime']['lookups'] = (
+            'also '
+            + '; '.join(dt_bits)
+            + '. e.g. utworzono__year = 2021, utworzono__date = "2021-06-01"'
+        )
+    if caps['relation_count'] and 'relation' in legend:
+        legend['relation']['aggregates'] = (
+            'to-many relation: <rel>__count (integer), '
+            'e.g. autorzy__count >= 2.'
+            ' Numeric aggregates via dot: '
+            '<rel>.<numeric_field>__sum|avg|min|max, e.g. autorzy.rating__avg'
+        )
 
 
 def _render_json(ir):
@@ -570,6 +649,8 @@ def _render_json(ir):
             ftype = facts['type']
             if ftype not in legend:
                 legend[ftype] = {'operators': ['=', '!=', 'in', 'not in']}
+    if 'capabilities' in ir:
+        _apply_capabilities_to_legend(legend, ir['capabilities'])
     return {
         'start_model': ir['start_model'],
         'grammar': dict(_GRAMMAR),

@@ -77,6 +77,38 @@ class DerivedCapabilitiesTest(TestCase):
         ir = _build_schema_ir(SurfacedSchema(Book), 50)
         self.assertNotIn('written__year', ir['models']['core.book'])
 
+    def test_json_date_legend_advertises_part_lookups(self):
+        bundle = describe_schema_for_llm(DerivedSchema(Book))
+        lookups = bundle['operators_by_type']['date'].get('lookups', '')
+        self.assertIn('year', lookups)
+        self.assertIn('<field>__', lookups)
+
+    def test_json_datetime_legend_advertises_time_and_extracts(self):
+        bundle = describe_schema_for_llm(DerivedSchema(Book))
+        lookups = bundle['operators_by_type']['datetime'].get('lookups', '')
+        self.assertIn('hour', lookups)
+        self.assertIn('__date', lookups)
+        self.assertIn('__time', lookups)
+
+    def test_json_relation_legend_advertises_aggregates(self):
+        bundle = describe_schema_for_llm(DerivedSchema(Book))
+        agg = bundle['operators_by_type']['relation'].get('aggregates', '')
+        self.assertIn('__count', agg)
+        self.assertIn('sum', agg)
+
+    def test_json_plain_schema_has_no_capability_notes(self):
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        self.assertNotIn('lookups', bundle['operators_by_type']['date'])
+        self.assertNotIn('aggregates', bundle['operators_by_type']['relation'])
+
+    def test_compact_header_lists_capabilities_once(self):
+        text = describe_schema_for_llm(DerivedSchema(Book), format='compact')
+        self.assertIn('__count', text)
+        self.assertIn('year', text)
+        # the derived fields are not emitted as their own lines
+        self.assertNotIn('written__year', text)
+        self.assertNotIn('book__count  ', text)
+
 
 class AuthorPickerSchema(AutocompleteSchemaMixin, DjangoQLSchema):
     include = (Book, User)
