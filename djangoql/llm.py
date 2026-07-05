@@ -395,6 +395,83 @@ def _json_field(facts):
     return {'type': type_token, **extras}
 
 
+#: Header comment block for the compact format: grammar + per-type operators,
+#: written once at the top so field lines stay terse.
+_COMPACT_HEADER = [
+    '# DjangoQL schema',
+    '# Query: <field> <op> <value>, combined with and/or, grouped with ().',
+    '# Negate with != / !~ / not in / not startswith / not endswith '
+    '(no standalone `not`).',
+    '# Relations: traverse with a dot (author.name = "..."), or compare None.',
+    '# Operators by type:',
+    '#   int/float/date:  = != > >= < <=  in  not in        e.g. rating = 4.5',
+    '#   datetime:        (as above) plus ~ !~',
+    '#   str:  = != ~ !~ startswith endswith (not ...) in  not in'
+    '           e.g. name ~ "text"',
+    '#   bool:           = !=                           e.g. is_pub = True',
+    '#   -> relation:     = None / != None / dot-traverse',
+    '#   # object_reference: = != in not in  (match by pk)',
+    '# Suffix ? = nullable.  choices: closed set.',
+    '',
+]
+
+
+def _q(value):
+    """Double-quote a value for the compact rendering."""
+    return f'"{value}"'
+
+
+def _compact_field(name, facts, width):
+    """Render one IR field as a single compact line."""
+    padded = name.ljust(width)
+    type_token = facts['type'] + ('?' if facts.get('nullable') else '')
+    if facts.get('object_reference'):
+        return f'{padded}  # {type_token} (object_reference)'
+    if facts['type'] == 'relation':
+        parts = ['-> {}'.format(facts.get('relates_to', '?'))]
+        if 'match_field' in facts:
+            vals = ', '.join(_q(v) for v in facts['related_values'])
+            parts.append('match {} in ({})'.format(facts['match_field'], vals))
+        elif 'match_fields' in facts:
+            segs = [
+                '{} in ({})'.format(
+                    f, ', '.join(_q(v) for v in facts['related_values'][f])
+                )
+                for f in facts['match_fields']
+            ]
+            parts.append('match ' + '; '.join(segs))
+        elif 'related_examples' in facts:
+            ex = ', '.join(_q(v) for v in facts['related_examples'])
+            parts.append('examples: ' + ex)
+        return '{}  {}'.format(padded, '  '.join(parts))
+    parts = [type_token]
+    if 'label' in facts:
+        label = _q(facts['label'])
+        if 'help_text' in facts:
+            label += ' — {}'.format(facts['help_text'])
+        parts.append(label)
+    if 'choices' in facts:
+        parts.append('choices: ' + ' | '.join(facts['choices']))
+    if 'suggested_values' in facts:
+        vals = ', '.join(_q(v) for v in facts['suggested_values'])
+        parts.append('values: ' + vals)
+    return '{}  {}'.format(padded, '  '.join(parts))
+
+
+def _render_compact(ir):
+    """Render the IR as a terse text block, one line per field."""
+    lines = list(_COMPACT_HEADER)
+    lines.append('start model: {}'.format(ir['start_model']))
+    lines.append('')
+    for label, fields in ir['models'].items():
+        lines.append(f'{label}:')
+        width = max((len(n) for n in fields), default=0)
+        for name, facts in fields.items():
+            lines.append('  ' + _compact_field(name, facts, width))
+        lines.append('')
+    return '\n'.join(lines).rstrip() + '\n'
+
+
 def _render_json(ir):
     """Render the IR as the normalized JSON description."""
     return {
@@ -439,4 +516,6 @@ def describe_schema_for_llm(schema, format='json', max_fk_options=50):  # noqa: 
     ir = _build_schema_ir(schema, max_fk_options)
     if format == 'json':
         return _render_json(ir)
+    if format == 'compact':
+        return _render_compact(ir)
     raise ValueError(f"format must be 'json' or 'compact', got {format!r}")

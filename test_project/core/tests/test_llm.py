@@ -331,3 +331,74 @@ class RelationValuesTest(TestCase):
         similar = bundle['models']['core.book']['similar_books']
         self.assertEqual('name', similar['match_field'])
         self.assertEqual({'Dune', 'Solaris'}, set(similar['related_values']))
+
+
+class CompactFormatTest(TestCase):
+    def _bundle(self):
+        return describe_schema_for_llm(DjangoQLSchema(Book), format='compact')
+
+    def test_compact_returns_a_string(self):
+        self.assertIsInstance(self._bundle(), str)
+
+    def test_header_lists_operators_once(self):
+        text = self._bundle()
+        # operator hints live in the header, not on every field line
+        self.assertIn('Operators', text)
+        self.assertIn('start model: core.book', text)
+
+    def test_scalar_line_has_no_operator_tokens(self):
+        text = self._bundle()
+        line = next(
+            ln
+            for ln in text.splitlines()
+            if ln.strip().startswith('is_published')
+        )
+        self.assertIn('bool', line)
+        # a plain bool line must not spell out operators
+        self.assertNotIn('!=', line)
+
+    def test_nullable_marked_with_question_mark(self):
+        text = self._bundle()
+        line = next(
+            ln
+            for ln in text.splitlines()
+            if ln.strip().startswith('published_date')
+        )
+        self.assertIn('date?', line)
+
+    def test_relation_rendered_with_arrow(self):
+        text = self._bundle()
+        line = next(
+            ln for ln in text.splitlines() if ln.strip().startswith('author')
+        )
+        self.assertIn('-> auth.user', line)
+
+    def test_choice_field_lists_choices(self):
+        text = self._bundle()
+        line = next(
+            ln for ln in text.splitlines() if ln.strip().startswith('genre')
+        )
+        self.assertIn('choices:', line)
+        self.assertIn('Drama', line)
+
+    def test_relation_values_render_inline(self):
+        Book.objects.create(
+            name='Dune',
+            author=User.objects.create(username='ada'),
+        )
+        Book.objects.create(
+            name='Solaris',
+            author=User.objects.create(username='alan'),
+        )
+        text = describe_schema_for_llm(DjangoQLSchema(Book), format='compact')
+        line = next(
+            ln
+            for ln in text.splitlines()
+            if ln.strip().startswith('similar_books')
+        )
+        self.assertIn('match name in (', line)
+        self.assertIn('"Dune"', line)
+
+    def test_unknown_format_raises(self):
+        with self.assertRaises(ValueError):
+            describe_schema_for_llm(DjangoQLSchema(Book), format='yaml')
