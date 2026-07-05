@@ -79,19 +79,65 @@ SENSITIVE_TARGET_APP_LABELS = frozenset(
 _AUTO = object()
 
 
-def operators_for(field):
-    """Return the legal DjangoQL operators for ``field``.
+#: Generic, always-valid example queries. Schema-agnostic: they teach shape
+#: (and/or, grouping, lists, None), not specific fields.
+_EXAMPLES = [
+    'id = 1',
+    'id > 10 and id < 100',
+    'id in (1, 2, 3)',
+    'id = 1 or id = 2',
+    '(id > 1 and id < 5) or id = 10',
+]
 
-    Relations are special: they are either traversed with a dot or compared to
-    ``None``, so they get a descriptive list rather than raw operator tokens.
-    Object-picker fields (``object_reference``) match a related row by primary
-    key, so despite their string ``type`` they only accept equality/membership.
-    """
-    if isinstance(field, RelationField):
-        return ['= None', '!= None', '<relation>.<field> (traverse with a dot)']
-    if getattr(field, 'object_reference', False):
-        return ['=', '!=', 'in', 'not in']
-    return list(OPERATORS_BY_TYPE.get(field.type, ['=', '!=', 'in', 'not in']))
+#: Grammar cheat-sheet, emitted once. The `operators` note tells the LLM to
+#: resolve a field's operators via operators_by_type rather than expecting them
+#: inline on every field.
+_GRAMMAR = {
+    'shape': (
+        '<field> <operator> <value>, combined with `and` / `or` '
+        'and grouped with parentheses'
+    ),
+    'operators': (
+        'each field lists its type; look up the allowed operators in '
+        'operators_by_type by that type. A field with `relates_to` uses the '
+        '`relation` entry; a field with `object_reference` true uses the '
+        '`object_reference` entry. A `?` suffix on the type means the field '
+        'is nullable (comparable to None).'
+    ),
+    'relations': (
+        'cross model boundaries with a dot: author.country.name = "Poland"'
+    ),
+    'lists': 'membership uses a parenthesized list: x in ("a", "b")',
+    'null': 'a nullable field (type ends with ?) or a relation can equal None',
+    'strings': 'string values are double-quoted; ~ means contains',
+    'negation': (
+        'there is NO standalone `not` operator. Negate with the operator '
+        'itself: != , !~ , not in , not startswith , not endswith. Example: '
+        'publisher != None (NOT: not publisher = None)'
+    ),
+}
+
+
+def _operator_legend():
+    """Per-type operators + one example, emitted once so field entries need
+    not repeat them. Includes the pseudo-types ``relation`` and
+    ``object_reference``."""
+    legend = {}
+    for ftype, ops in OPERATORS_BY_TYPE.items():
+        op = '~' if ftype == 'str' else '='
+        legend[ftype] = {
+            'operators': list(ops),
+            'example': f'x {op} {_EXAMPLE_VALUE_BY_TYPE[ftype]}',
+        }
+    legend['relation'] = {
+        'operators': [
+            '= None',
+            '!= None',
+            '<relation>.<field> (traverse with a dot)',
+        ],
+    }
+    legend['object_reference'] = {'operators': ['=', '!=', 'in', 'not in']}
+    return legend
 
 
 def _choice_labels(field):
@@ -194,21 +240,14 @@ def _distinct_values(related_model, field_name, limit):
         return None
 
 
-def _match_field_entry(related_model, relation_name, match_field, limit):
-    """Enrichment dict for a single identifying field, or {} if nothing fits."""
+def _match_field_entry(related_model, match_field, limit):
+    """Facts for a single identifying field, or {} if nothing fits."""
     if match_field is None:
         return {}
     values = _distinct_values(related_model, match_field, limit)
     if not values:
         return {}
-    return {
-        'match_field': match_field,
-        'related_values': values,
-        'note': 'match by traversal: {}.{} = <value>'.format(
-            relation_name,
-            match_field,
-        ),
-    }
+    return {'match_field': match_field, 'related_values': values}
 
 
 def _fk_spec(schema, field, name):
@@ -220,8 +259,8 @@ def _fk_spec(schema, field, name):
     return fk_options.get(field.model, {}).get(name, _AUTO)
 
 
-def _match_fields_entry(related_model, relation_name, match_fields, limit):
-    """Enrichment dict for several identifying fields, or {} if none fit."""
+def _match_fields_entry(related_model, match_fields, limit):
+    """Facts for several identifying fields, or {} if none fit."""
     values = {}
     for f in match_fields:
         v = _distinct_values(related_model, f, limit)
@@ -229,14 +268,9 @@ def _match_fields_entry(related_model, relation_name, match_fields, limit):
             values[f] = v
     if not values:
         return {}
-    emitted_fields = [f for f in match_fields if f in values]
     return {
-        'match_fields': emitted_fields,
+        'match_fields': [f for f in match_fields if f in values],
         'related_values': values,
-        'note': 'match by traversal, e.g. {}.{} = <value>'.format(
-            relation_name,
-            emitted_fields[0],
-        ),
     }
 
 
@@ -258,19 +292,12 @@ def _str_examples(related_model, limit):
         return None
 
 
-def _examples_entry(related_model, relation_name, limit):
-    """Enrichment dict of str(obj) examples for a relation, or {}."""
+def _examples_entry(related_model, limit):
+    """Facts: str(obj) examples for a relation, or {}."""
     examples = _str_examples(related_model, limit)
     if not examples:
         return {}
-    return {
-        'related_examples': examples,
-        'note': (
-            'these are example rows of the related model; match by '
-            'traversing to an identifying field, e.g. %s.<field> = <value>'
-            % relation_name
-        ),
-    }
+    return {'related_examples': examples}
 
 
 def _relation_values(schema, field, name, max_fk_options):
@@ -293,24 +320,18 @@ def _relation_values(schema, field, name, max_fk_options):
     if spec is True:
         match_field = _default_match_field(schema, field.relation)
         if match_field is None:
-            return _examples_entry(related_model, name, limit=None)
-        return _match_field_entry(related_model, name, match_field, limit=None)
+            return _examples_entry(related_model, limit=None)
+        return _match_field_entry(related_model, match_field, limit=None)
     if isinstance(spec, str) and spec != '__str__':
-        return _match_field_entry(
-            related_model,
-            name,
-            spec,
-            limit=max_fk_options,
-        )
+        return _match_field_entry(related_model, spec, limit=max_fk_options)
     if isinstance(spec, (list, tuple)):
         return _match_fields_entry(
             related_model,
-            name,
             list(spec),
             limit=max_fk_options,
         )
     if spec == '__str__':
-        return _examples_entry(related_model, name, limit=max_fk_options)
+        return _examples_entry(related_model, limit=max_fk_options)
 
     # spec is _AUTO
     if max_fk_options <= 0:
@@ -320,49 +341,72 @@ def _relation_values(schema, field, name, max_fk_options):
     match_field = _default_match_field(schema, field.relation)
     if match_field is None:
         return {}
-    return _match_field_entry(
-        related_model,
-        name,
-        match_field,
-        limit=max_fk_options,
-    )
+    return _match_field_entry(related_model, match_field, limit=max_fk_options)
 
 
-def describe_field(name, field, schema=None, max_fk_options=50):
-    """Describe a single schema field as a plain, JSON-serializable dict."""
-    entry = {
-        'type': field.type,
-        'nullable': bool(field.nullable),
-        'operators': operators_for(field),
-    }
-    entry.update(_field_metadata(field))
+def _field_ir(name, field, schema, max_fk_options):
+    """Semantic facts for one field, independent of output format.
+
+    Carries information only — no operators, examples, or notes (those are
+    derivable from the type and belong to the renderer's legend).
+    """
+    ir = {'type': field.type, 'nullable': bool(field.nullable)}
+    ir.update(_field_metadata(field))
+    if getattr(field, 'object_reference', False):
+        ir['object_reference'] = True
     if isinstance(field, RelationField):
-        entry['relates_to'] = field.relation
-        entry['note'] = (
-            'traverse into the related model with a dot, e.g. '
-            '%s.<field>; or compare the relation itself to None' % name
-        )
+        ir['relates_to'] = field.relation
         if schema is not None:
-            entry.update(_relation_values(schema, field, name, max_fk_options))
+            ir.update(_relation_values(schema, field, name, max_fk_options))
     else:
-        op = '~' if field.type == 'str' else '='
-        entry['example'] = '{} {} {}'.format(
-            name,
-            op,
-            _EXAMPLE_VALUE_BY_TYPE.get(field.type, '?'),
-        )
         choices = _choice_labels(field)
         if choices:
-            entry['choices'] = choices
-            entry['note'] = 'value should be one of the listed choices'
+            ir['choices'] = choices
         else:
             options = _field_options(field)
             if options:
-                entry['suggested_values'] = options
-    if getattr(field, 'object_reference', False):
-        # Object-picker fields accept only = / != / in / not in against a pk.
-        entry['object_reference'] = True
-    return entry
+                ir['suggested_values'] = options
+    return ir
+
+
+def _build_schema_ir(schema, max_fk_options):
+    """Build the format-independent intermediate representation of a schema."""
+    return {
+        'start_model': schema.model_label(schema.current_model),
+        'models': {
+            model_label: {
+                name: _field_ir(name, field, schema, max_fk_options)
+                for name, field in fields.items()
+                if field.suggested
+            }
+            for model_label, fields in schema.models.items()
+        },
+    }
+
+
+def _json_field(facts):
+    """Terse JSON for one field: a bare type string when it has no extras,
+    else an object with ``type`` plus only informative keys. A ``?`` suffix
+    on the type marks the field nullable."""
+    type_token = facts['type'] + ('?' if facts.get('nullable') else '')
+    extras = {k: v for k, v in facts.items() if k not in ('type', 'nullable')}
+    if not extras:
+        return type_token
+    return {'type': type_token, **extras}
+
+
+def _render_json(ir):
+    """Render the IR as the normalized JSON description."""
+    return {
+        'start_model': ir['start_model'],
+        'grammar': _GRAMMAR,
+        'operators_by_type': _operator_legend(),
+        'models': {
+            label: {name: _json_field(facts) for name, facts in fields.items()}
+            for label, fields in ir['models'].items()
+        },
+        'examples': list(_EXAMPLES),
+    }
 
 
 def _field_options(field):
@@ -383,62 +427,16 @@ def _field_options(field):
     return [str(o) for o in options[:MAX_SUGGESTED_VALUES]] or None
 
 
-def describe_schema_for_llm(schema, max_fk_options=50):
-    """Return a JSON-serializable description of ``schema`` for an LLM prompt.
+def describe_schema_for_llm(schema, format='json', max_fk_options=50):  # noqa: A002
+    """Describe ``schema`` for an LLM prompt.
 
-    ``schema`` is an *instance* of a :class:`~djangoql.schema.DjangoQLSchema`
-    subclass (e.g. ``MySchema(MyModel)``). Only fields that are actually
-    suggested in autocomplete are included, so the description matches what a
-    user sees.
+    ``schema`` is an *instance* of a DjangoQLSchema subclass. ``format`` selects
+    the output: ``'json'`` (default) returns a normalized, JSON-serializable
+    dict (a one-time operator legend plus terse field entries); ``'compact'``
+    returns a terse text block. Only fields suggested in autocomplete are
+    included, so the description matches what a user sees.
     """
-    models = {}
-    for model_label, fields in schema.models.items():
-        models[model_label] = {
-            name: describe_field(
-                name,
-                field,
-                schema=schema,
-                max_fk_options=max_fk_options,
-            )
-            for name, field in fields.items()
-            if field.suggested
-        }
-    return {
-        'start_model': schema.model_label(schema.current_model),
-        'grammar': {
-            'shape': (
-                '<field> <operator> <value>, combined with `and` / `or` '
-                'and grouped with parentheses'
-            ),
-            'relations': (
-                'cross model boundaries with a dot: '
-                'author.country.name = "Poland"'
-            ),
-            'lists': 'membership uses a parenthesized list: x in ("a", "b")',
-            'null': 'a nullable field or a relation can be compared to None',
-            'strings': 'string values are double-quoted; ~ means contains',
-            'negation': (
-                'there is NO standalone `not` operator. Negate with the '
-                'operator itself: != , !~ , not in , not startswith , '
-                'not endswith. Example: publisher != None '
-                '(NOT: not publisher = None)'
-            ),
-        },
-        'models': models,
-        'examples': _examples(schema),
-    }
-
-
-def _examples(schema):
-    """A few generic, always-valid example queries.
-
-    Deliberately schema-agnostic so they parse regardless of the model. They
-    teach shape (and/or, grouping, lists, contains, None), not specific fields.
-    """
-    return [
-        'id = 1',
-        'id > 10 and id < 100',
-        'id in (1, 2, 3)',
-        'id = 1 or id = 2',
-        '(id > 1 and id < 5) or id = 10',
-    ]
+    ir = _build_schema_ir(schema, max_fk_options)
+    if format == 'json':
+        return _render_json(ir)
+    raise ValueError(f"format must be 'json' or 'compact', got {format!r}")

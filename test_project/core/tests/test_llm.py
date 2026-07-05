@@ -56,7 +56,13 @@ class DescribeSchemaForLLMTest(TestCase):
         self.bundle = describe_schema_for_llm(DjangoQLSchema(Book))
 
     def test_top_level_keys(self):
-        for key in ('start_model', 'grammar', 'models', 'examples'):
+        for key in (
+            'start_model',
+            'grammar',
+            'operators_by_type',
+            'models',
+            'examples',
+        ):
             self.assertIn(key, self.bundle)
 
     def test_start_model_is_the_root(self):
@@ -65,82 +71,72 @@ class DescribeSchemaForLLMTest(TestCase):
     def test_models_contains_root_and_related(self):
         models = self.bundle['models']
         self.assertIn('core.book', models)
-        # author is a FK to auth.User -> the related model must be reachable
         self.assertIn('auth.user', models)
 
-    def test_scalar_field_carries_type_and_operators(self):
-        rating = self.bundle['models']['core.book']['rating']
-        self.assertEqual('float', rating['type'])
-        self.assertIn('>', rating['operators'])
-        self.assertIn('<=', rating['operators'])
+    def test_operator_legend_is_emitted_once_by_type(self):
+        legend = self.bundle['operators_by_type']
+        self.assertIn('>', legend['float']['operators'])
+        self.assertIn('~', legend['str']['operators'])
+        self.assertIn('startswith', legend['str']['operators'])
+        self.assertEqual({'=', '!='}, set(legend['bool']['operators']))
+        self.assertIn('relation', legend)
+        self.assertIn('object_reference', legend)
 
-    def test_str_field_offers_contains_operator(self):
-        name = self.bundle['models']['core.book']['name']
-        self.assertEqual('str', name['type'])
-        self.assertIn('~', name['operators'])
-        self.assertIn('startswith', name['operators'])
+    def test_grammar_documents_operator_lookup(self):
+        self.assertIn('operators_by_type', self.bundle['grammar']['operators'])
 
-    def test_bool_field_only_equality_operators(self):
-        is_published = self.bundle['models']['core.book']['is_published']
-        self.assertEqual('bool', is_published['type'])
-        self.assertEqual({'=', '!='}, set(is_published['operators']))
+    def test_fields_never_repeat_operators_or_examples(self):
+        for field in self.bundle['models']['core.book'].values():
+            if isinstance(field, dict):
+                self.assertNotIn('operators', field)
+                self.assertNotIn('example', field)
 
-    def test_relation_field_points_at_related_model(self):
-        author = self.bundle['models']['core.book']['author']
-        self.assertEqual('relation', author['type'])
-        self.assertEqual('auth.user', author['relates_to'])
-
-    def test_nullable_flag_is_exposed(self):
-        # published_date is null=True on the model
-        self.assertTrue(
-            self.bundle['models']['core.book']['published_date']['nullable'],
+    def test_plain_scalar_field_is_a_bare_type_string(self):
+        # is_published is a non-null bool with no metadata -> bare "bool"
+        self.assertEqual(
+            'bool', self.bundle['models']['core.book']['is_published']
         )
 
-    def test_object_reference_field_restricts_operators(self):
-        # A picker (object_reference) matches a related row by pk, so despite
-        # its string type it must only offer = / != / in / not in -- never
-        # ~ / startswith, which would mislead the LLM.
+    def test_nullable_field_uses_question_mark_suffix(self):
+        # published_date is null=True and has no metadata -> "date?"
+        self.assertEqual(
+            'date?', self.bundle['models']['core.book']['published_date']
+        )
+        # rating is a nullable float with no metadata -> "float?"
+        self.assertEqual('float?', self.bundle['models']['core.book']['rating'])
+
+    def test_field_with_metadata_is_an_object_with_type(self):
+        # name carries verbose_name/help_text -> object, type is 'str'
+        name = self.bundle['models']['core.book']['name']
+        self.assertEqual('str', name['type'])
+        self.assertEqual('Title', name['label'])
+        self.assertEqual('The title of the book', name['help_text'])
+
+    def test_choice_field_object_lists_labels(self):
+        genre = self.bundle['models']['core.book']['genre']
+        self.assertEqual(['Drama', 'Comics', 'Other'], genre['choices'])
+
+    def test_relation_field_object_points_at_related_model(self):
+        author = self.bundle['models']['core.book']['author']
+        self.assertEqual('auth.user', author['relates_to'])
+        self.assertTrue(author['type'].startswith('relation'))
+
+    def test_object_reference_uses_its_operator_class(self):
         bundle = describe_schema_for_llm(AuthorPickerSchema(Book))
         author = bundle['models']['core.book']['author']
-        self.assertTrue(author.get('object_reference'))
-        self.assertEqual(['=', '!=', 'in', 'not in'], author['operators'])
+        self.assertTrue(author['object_reference'])
+        self.assertEqual(
+            ['=', '!=', 'in', 'not in'],
+            bundle['operators_by_type']['object_reference']['operators'],
+        )
 
     def test_grammar_warns_there_is_no_standalone_not(self):
-        # A real footgun: `not x = y` is a syntax error in DjangoQL.
         self.assertIn('negation', self.bundle['grammar'])
 
     def test_examples_actually_parse(self):
-        # Whatever we teach the LLM by example must itself be valid DjangoQL.
         parser = DjangoQLParser()
         for query in self.bundle['examples']:
-            parser.parse(query)  # raises DjangoQLError on failure
-
-    def test_field_exposes_explicit_verbose_name_as_label(self):
-        name = self.bundle['models']['core.book']['name']
-        self.assertEqual('Title', name['label'])
-
-    def test_field_exposes_help_text(self):
-        name = self.bundle['models']['core.book']['name']
-        self.assertEqual('The title of the book', name['help_text'])
-
-    def test_autogenerated_verbose_name_is_suppressed(self):
-        # 'rating' has no explicit verbose_name -> Django defaults it to
-        # 'rating', which duplicates the field name and must be omitted.
-        rating = self.bundle['models']['core.book']['rating']
-        self.assertNotIn('label', rating)
-
-    def test_choice_field_lists_labels_as_closed_set(self):
-        # Book.genre is a PositiveIntegerField with choices; DjangoQL matches
-        # on the human label, so the labels are what the LLM must emit.
-        genre = self.bundle['models']['core.book']['genre']
-        self.assertEqual(['Drama', 'Comics', 'Other'], genre['choices'])
-        self.assertIn('note', genre)
-
-    def test_choice_field_emits_without_suggest_options(self):
-        # No suggest_options flag anywhere -> choices still appear (they are
-        # static and read without a query).
-        genre = self.bundle['models']['core.book']['genre']
-        self.assertNotIn('suggested_values', genre)
+            parser.parse(query)
 
 
 class DjangoqlSchemaCommandTest(TestCase):
