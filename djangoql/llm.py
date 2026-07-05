@@ -7,10 +7,18 @@ search space -- every model, every field, its type, whether it is nullable,
 what it relates to (the "dependent" fields), and which operators are legal for
 that field type -- plus a grammar cheat-sheet and a few worked examples.
 
-Drop the JSON straight into an LLM system prompt and the model has everything it
-needs to generate valid DjangoQL: the field graph tells it *what* it can query,
-the per-type operator lists tell it *how*, and the grammar notes cover the few
-non-obvious rules (relations traversed with a dot, no standalone ``not``).
+Two output formats share one intermediate representation: ``'json'`` (the
+default) renders a normalized, JSON-serializable dict, and ``'compact'``
+renders the same information as a terse text block. In both, operators are
+never repeated per field -- they are resolved once, by field type, through a
+shared ``operators_by_type`` legend (with a graceful fallback entry for any
+custom/unknown field type).
+
+Drop the description straight into an LLM system prompt and the model has
+everything it needs to generate valid DjangoQL: the field graph tells it
+*what* it can query, the operator legend tells it *how*, and the grammar
+notes cover the few non-obvious rules (relations traversed with a dot, no
+standalone ``not``).
 
 The introspection itself is reused from the schema (the same BFS over related
 models that powers autocomplete); this module only layers the operator matrix,
@@ -421,12 +429,25 @@ def _q(value):
     return f'"{value}"'
 
 
+def _append_label(parts, facts):
+    """Append the quoted ``label`` (with optional ``help_text``) to ``parts``,
+    shared by both the scalar and relation branches of :func:`_compact_field`
+    so label/help_text formatting is never duplicated."""
+    if 'label' in facts:
+        label = _q(facts['label'])
+        if 'help_text' in facts:
+            label += ' — {}'.format(facts['help_text'])
+        parts.append(label)
+
+
 def _compact_field(name, facts, width):
     """Render one IR field as a single compact line."""
     padded = name.ljust(width)
     type_token = facts['type'] + ('?' if facts.get('nullable') else '')
     if facts['type'] == 'relation':
         rel = facts.get('relates_to', '?')
+        # Deliberate divergence from JSON: JSON marks nullability on the type
+        # (`relation?`), compact marks it on the relation target (`-> x?`).
         if facts.get('nullable'):
             rel += '?'
         parts = [f'-> {rel}']
@@ -444,17 +465,14 @@ def _compact_field(name, facts, width):
         elif 'related_examples' in facts:
             ex = ', '.join(_q(v) for v in facts['related_examples'])
             parts.append('examples: ' + ex)
+        _append_label(parts, facts)
         return '{}  {}'.format(padded, '  '.join(parts))
     # scalar fields (including object_reference pickers)
     if facts.get('object_reference'):
         parts = [f'# {type_token} (object_reference)']
     else:
         parts = [type_token]
-    if 'label' in facts:
-        label = _q(facts['label'])
-        if 'help_text' in facts:
-            label += ' — {}'.format(facts['help_text'])
-        parts.append(label)
+    _append_label(parts, facts)
     if 'choices' in facts:
         parts.append('choices: ' + ' | '.join(facts['choices']))
     if 'suggested_values' in facts:
@@ -479,10 +497,20 @@ def _render_compact(ir):
 
 def _render_json(ir):
     """Render the IR as the normalized JSON description."""
+    legend = _operator_legend()
+    # Graceful degradation for custom field types (e.g. a DjangoQLField
+    # subclass with a novel `type`): mirrors the pre-refactor
+    # OPERATORS_BY_TYPE.get(type, [...]) fallback so every field type in the
+    # IR resolves to *some* operator list, even one the legend never named.
+    for fields in ir['models'].values():
+        for facts in fields.values():
+            ftype = facts['type']
+            if ftype not in legend:
+                legend[ftype] = {'operators': ['=', '!=', 'in', 'not in']}
     return {
         'start_model': ir['start_model'],
-        'grammar': _GRAMMAR,
-        'operators_by_type': _operator_legend(),
+        'grammar': dict(_GRAMMAR),
+        'operators_by_type': legend,
         'models': {
             label: {name: _json_field(facts) for name, facts in fields.items()}
             for label, fields in ir['models'].items()

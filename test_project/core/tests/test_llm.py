@@ -138,6 +138,25 @@ class DescribeSchemaForLLMTest(TestCase):
         for query in self.bundle['examples']:
             parser.parse(query)
 
+    def test_grammar_is_not_shared_between_calls(self):
+        b1 = describe_schema_for_llm(DjangoQLSchema(Book))
+        b1['grammar']['shape'] = 'MUTATED'
+        b2 = describe_schema_for_llm(DjangoQLSchema(Book))
+        self.assertNotEqual('MUTATED', b2['grammar']['shape'])
+
+    def test_json_legend_has_fallback_for_custom_type(self):
+        from djangoql.llm import _render_json
+
+        ir = {
+            'start_model': 'x.y',
+            'models': {'x.y': {'f': {'type': 'geo', 'nullable': False}}},
+        }
+        bundle = _render_json(ir)
+        self.assertEqual(
+            ['=', '!=', 'in', 'not in'],
+            bundle['operators_by_type']['geo']['operators'],
+        )
+
 
 class DjangoqlSchemaCommandTest(TestCase):
     def _run(self, *args):
@@ -450,3 +469,24 @@ class CompactFormatTest(TestCase):
         )
         self.assertIn('username in (', line)
         self.assertIn('email in (', line)
+
+    def test_compact_relation_line_includes_label_and_help_text(self):
+        from djangoql.llm import _compact_field
+
+        facts = {
+            'type': 'relation',
+            'nullable': False,
+            'relates_to': 'auth.user',
+            'label': 'Author',
+            'help_text': 'Who wrote it',
+        }
+        line = _compact_field('author', facts, 6)
+        self.assertIn('Author', line)
+        self.assertIn('Who wrote it', line)
+
+    def test_compact_nullable_object_reference(self):
+        from djangoql.llm import _compact_field
+
+        facts = {'type': 'str', 'nullable': True, 'object_reference': True}
+        line = _compact_field('picker', facts, 6)
+        self.assertIn('# str? (object_reference)', line)
