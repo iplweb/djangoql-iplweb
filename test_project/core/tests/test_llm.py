@@ -402,3 +402,39 @@ class CompactFormatTest(TestCase):
     def test_unknown_format_raises(self):
         with self.assertRaises(ValueError):
             describe_schema_for_llm(DjangoQLSchema(Book), format='yaml')
+
+    def test_nullable_relation_marked_with_question_mark(self):
+        text = self._bundle()
+        line = next(
+            ln
+            for ln in text.splitlines()
+            if ln.strip().startswith('content_type')
+        )
+        # content_type is a nullable FK -> the arrow target carries ?
+        self.assertIn('-> contenttypes.contenttype?', line)
+
+    def test_object_reference_keeps_its_values(self):
+        User.objects.create(username='ada')
+        User.objects.create(username='alan')
+        text = describe_schema_for_llm(
+            AuthorPickerSchema(Book),
+            format='compact',
+        )
+        line = next(
+            ln for ln in text.splitlines() if ln.strip().startswith('author')
+        )
+        self.assertIn('object_reference', line)
+        self.assertIn('ada', line)
+
+    def test_multi_field_match_renders_each_field(self):
+        User.objects.create(username='ada', email='ada@x.io')
+
+        class ListSchema(DjangoQLSchema):
+            fk_options = {Book: {'author': ['username', 'email']}}
+
+        text = describe_schema_for_llm(ListSchema(Book), format='compact')
+        line = next(
+            ln for ln in text.splitlines() if ln.strip().startswith('author')
+        )
+        self.assertIn('username in (', line)
+        self.assertIn('email in (', line)

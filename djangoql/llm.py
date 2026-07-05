@@ -425,10 +425,11 @@ def _compact_field(name, facts, width):
     """Render one IR field as a single compact line."""
     padded = name.ljust(width)
     type_token = facts['type'] + ('?' if facts.get('nullable') else '')
-    if facts.get('object_reference'):
-        return f'{padded}  # {type_token} (object_reference)'
     if facts['type'] == 'relation':
-        parts = ['-> {}'.format(facts.get('relates_to', '?'))]
+        rel = facts.get('relates_to', '?')
+        if facts.get('nullable'):
+            rel += '?'
+        parts = [f'-> {rel}']
         if 'match_field' in facts:
             vals = ', '.join(_q(v) for v in facts['related_values'])
             parts.append('match {} in ({})'.format(facts['match_field'], vals))
@@ -444,7 +445,11 @@ def _compact_field(name, facts, width):
             ex = ', '.join(_q(v) for v in facts['related_examples'])
             parts.append('examples: ' + ex)
         return '{}  {}'.format(padded, '  '.join(parts))
-    parts = [type_token]
+    # scalar fields (including object_reference pickers)
+    if facts.get('object_reference'):
+        parts = [f'# {type_token} (object_reference)']
+    else:
+        parts = [type_token]
     if 'label' in facts:
         label = _q(facts['label'])
         if 'help_text' in facts:
