@@ -1,3 +1,12 @@
+0.30.1 (2026-07-05)
+-------------------
+
+* **LLM schema fixes:** ``_default_match_field`` now prefers identifier-like
+  fields (``nazwa``, ``skrot``, ``username``) over the first alphabetical string
+  field when auto-picking a match field, and the swallowed exceptions in
+  ``_distinct_values`` / ``_str_examples`` are now logged instead of silently
+  producing a value-less schema.
+
 0.30.0 (2026-07-05)
 -------------------
 

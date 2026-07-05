@@ -123,7 +123,7 @@ multiline-quotes = "double"
 quote-style = "single"
 
 [tool.bumpver]
-current_version = "0.28.0"
+current_version = "0.30.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
