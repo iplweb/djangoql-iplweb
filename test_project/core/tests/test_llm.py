@@ -109,6 +109,39 @@ class DerivedCapabilitiesTest(TestCase):
         self.assertNotIn('written__year', text)
         self.assertNotIn('book__count  ', text)
 
+    def test_datetime_example_omits_undetected_capabilities(self):
+        from djangoql.llm import _apply_capabilities_to_legend, _operator_legend
+
+        legend = _operator_legend()
+        caps = {
+            'date_parts': [],
+            'time_parts': ['hour', 'minute', 'second'],
+            'has_date_extract': False,
+            'has_time_extract': False,
+            'relation_count': False,
+        }
+        _apply_capabilities_to_legend(legend, caps)
+        note = legend['datetime']['lookups']
+        self.assertIn('hour', note)
+        self.assertNotIn('__year', note)  # not detected -> not claimed
+        self.assertNotIn('__date', note)  # not detected -> not claimed
+
+    def test_date_example_reflects_detected_parts(self):
+        from djangoql.llm import _apply_capabilities_to_legend, _operator_legend
+
+        legend = _operator_legend()
+        caps = {
+            'date_parts': ['year', 'month'],
+            'time_parts': [],
+            'has_date_extract': False,
+            'has_time_extract': False,
+            'relation_count': False,
+        }
+        _apply_capabilities_to_legend(legend, caps)
+        self.assertIn('year', legend['date']['lookups'])
+        # date-only capability must not claim the datetime-only __date extract
+        self.assertNotIn('__date', legend['datetime']['lookups'])
+
 
 class AuthorPickerSchema(AutocompleteSchemaMixin, DjangoQLSchema):
     include = (Book, User)

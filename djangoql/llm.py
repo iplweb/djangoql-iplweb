@@ -29,6 +29,7 @@ from django.core.exceptions import FieldDoesNotExist
 
 from .extras import (
     AggregateField,
+    CountField,
     DateExtractField,
     DatePartField,
     TimeExtractField,
@@ -427,7 +428,10 @@ def _schema_capabilities(schema):
                     time_parts.add(field.part)
                 else:
                     date_parts.add(field.part)
-            elif isinstance(field, AggregateField):
+            elif isinstance(field, CountField):
+                # Only CountField (a <rel>__count field) is ever statically
+                # registered; numeric AggregateField subclasses are
+                # synthesized on demand and never appear in schema.models.
                 relation_count = True
     return {
         'date_parts': [p for p in _CANONICAL_DATE_PARTS if p in date_parts],
@@ -608,26 +612,38 @@ def _apply_capabilities_to_legend(legend, caps):
     """
     date_parts = caps['date_parts']
     time_parts = caps['time_parts']
+
+    def _temporal_example(parts, has_date_extract):
+        ex = []
+        if 'year' in parts:
+            ex.append('utworzono__year = 2021')
+        elif parts:
+            ex.append('utworzono__%s = 1' % parts[0])
+        if has_date_extract:
+            ex.append('utworzono__date = "2021-06-01"')
+        return ex
+
     if date_parts and 'date' in legend:
-        legend['date']['lookups'] = (
-            'also <field>__<part> (integer): %s. e.g. utworzono__year = 2021'
-            % ', '.join(date_parts)
-        )
+        note = 'also <field>__<part> (integer): %s' % ', '.join(date_parts)
+        ex = _temporal_example(date_parts, False)
+        if ex:
+            note += '. e.g. ' + ', '.join(ex)
+        legend['date']['lookups'] = note
+
+    dt_parts = date_parts + time_parts
     dt_bits = []
-    if date_parts or time_parts:
-        dt_bits.append(
-            '<field>__<part> (integer): %s' % ', '.join(date_parts + time_parts)
-        )
+    if dt_parts:
+        dt_bits.append('<field>__<part> (integer): %s' % ', '.join(dt_parts))
     if caps['has_date_extract']:
         dt_bits.append('<field>__date (date)')
     if caps['has_time_extract']:
         dt_bits.append('<field>__time (time)')
     if dt_bits and 'datetime' in legend:
-        legend['datetime']['lookups'] = (
-            'also '
-            + '; '.join(dt_bits)
-            + '. e.g. utworzono__year = 2021, utworzono__date = "2021-06-01"'
-        )
+        note = 'also ' + '; '.join(dt_bits)
+        ex = _temporal_example(dt_parts, caps['has_date_extract'])
+        if ex:
+            note += '. e.g. ' + ', '.join(ex)
+        legend['datetime']['lookups'] = note
     if caps['relation_count'] and 'relation' in legend:
         legend['relation']['aggregates'] = (
             'to-many relation: <rel>__count (integer), '
