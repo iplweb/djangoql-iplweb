@@ -8,6 +8,7 @@ relations, allowed operators, examples) suitable for an LLM prompt. The
 
 import json
 from io import StringIO
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -382,6 +383,19 @@ class RelationValuesTest(TestCase):
         author = bundle['models']['core.book']['author']
         self.assertNotIn('related_values', author)
         self.assertNotIn('password', json.dumps(author))
+
+    def test_auto_skips_custom_auth_user_model(self):
+        # A custom AUTH_USER_MODEL living outside the built-in sensitive
+        # apps (e.g. 'myapp.User') must be excluded from auto mode too, not
+        # just models in SENSITIVE_TARGET_APP_LABELS. Pretend Book itself is
+        # the user model (core app, not otherwise flagged as sensitive) via
+        # similar_books, a self-relation on Book.
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        with mock.patch('djangoql.llm.get_user_model', return_value=Book):
+            bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
 
     def test_distinct_values_logs_on_error(self):
         # A bad field name blows up inside the try/except in _distinct_values;

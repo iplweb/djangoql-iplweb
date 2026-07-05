@@ -27,6 +27,7 @@ examples and grammar notes on top.
 
 import logging
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 
 from .extras import (
@@ -97,6 +98,26 @@ SENSITIVE_TARGET_APP_LABELS = frozenset(
 
 #: Sentinel: a relation with no fk_options entry falls back to auto mode.
 _AUTO = object()
+
+
+def _is_sensitive_target(model):
+    """A relation target whose values must never be auto-emitted.
+
+    True for Django's built-in sensitive apps (see
+    ``SENSITIVE_TARGET_APP_LABELS``), plus the project's ``AUTH_USER_MODEL``
+    -- which may live in any app, including one not otherwise flagged as
+    sensitive (e.g. a custom ``myapp.User``). Only guards the *auto* branch of
+    :func:`_relation_values`; an explicit ``fk_options`` entry still overrides.
+    """
+    if model._meta.app_label in SENSITIVE_TARGET_APP_LABELS:
+        return True
+    try:
+        return model is get_user_model()
+    except Exception:
+        # get_user_model() raises ImproperlyConfigured if AUTH_USER_MODEL
+        # is malformed/missing; schema description must never break on that.
+        return False
+
 
 #: Canonical ordering for date/time lookup parts, so the legend note is stable.
 _CANONICAL_DATE_PARTS = [
@@ -424,7 +445,7 @@ def _relation_values(schema, field, name, max_fk_options):
     # spec is _AUTO
     if max_fk_options <= 0:
         return {}
-    if related_model._meta.app_label in SENSITIVE_TARGET_APP_LABELS:
+    if _is_sensitive_target(related_model):
         return {}
     match_field = _default_match_field(schema, field.relation)
     if match_field is None:
