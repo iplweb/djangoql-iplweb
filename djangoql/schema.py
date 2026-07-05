@@ -364,6 +364,27 @@ class DjangoQLSchema:
             raise DjangoQLSchemaError(
                 _('Either include or exclude can be specified, but not both'),
             )
+        overlap = set(self.include_fields) & set(self.exclude_fields)
+        if overlap:
+            raise DjangoQLSchemaError(
+                _(
+                    'Either include_fields or exclude_fields can be specified '
+                    'for {models}, but not both',
+                ).format(models=', '.join(str(m) for m in overlap)),
+            )
+        for rules in (self.include_fields, self.exclude_fields):
+            for field_model, field_names in rules.items():
+                valid = {f.name for f in field_model._meta.get_fields()}
+                unknown = [n for n in field_names if n not in valid]
+                if unknown:
+                    raise DjangoQLSchemaError(
+                        _(
+                            'Unknown field(s) {fields} specified for {model}',
+                        ).format(
+                            fields=', '.join(unknown),
+                            model=field_model,
+                        ),
+                    )
         if self.excluded(model):
             raise DjangoQLSchemaError(
                 _(

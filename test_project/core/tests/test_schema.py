@@ -87,6 +87,26 @@ class FieldFilteringTest(TestCase):
         self.assertEqual(default - filtered, {'genre', 'price'})
 
 
+class ConflictingFieldRulesSchema(DjangoQLSchema):
+    include_fields = {Book: ['name']}
+    exclude_fields = {Book: ['genre']}
+
+
+class TypoFieldSchema(DjangoQLSchema):
+    include_fields = {Book: ['naem']}
+
+
+class FieldFilteringValidationTest(TestCase):
+    def test_same_model_in_both_dicts_raises(self):
+        with self.assertRaises(DjangoQLSchemaError):
+            ConflictingFieldRulesSchema(Book)
+
+    def test_unknown_field_name_raises_and_is_named(self):
+        with self.assertRaises(DjangoQLSchemaError) as ctx:
+            TypoFieldSchema(Book)
+        self.assertIn('naem', str(ctx.exception))
+
+
 class DjangoQLSchemaTest(TestCase):
     def all_models(self):
         models = []
