@@ -6,6 +6,7 @@ from django.db import models
 from django.test import TestCase
 
 from djangoql.exceptions import DjangoQLSchemaError
+from djangoql.llm import describe_schema_for_llm
 from djangoql.parser import DjangoQLParser
 from djangoql.schema import (
     DateField,
@@ -105,6 +106,28 @@ class FieldFilteringValidationTest(TestCase):
         with self.assertRaises(DjangoQLSchemaError) as ctx:
             TypoFieldSchema(Book)
         self.assertIn('naem', str(ctx.exception))
+
+
+class FieldFilteringConsequencesTest(TestCase):
+    def test_filtered_relation_drops_related_model(self):
+        # OnlyBookNameSchema keeps only Book.name, dropping the `author` FK,
+        # so User must never be introspected.
+        models = serializer.serialize(OnlyBookNameSchema(Book))['models']
+        self.assertEqual(set(models), {'core.book'})
+        self.assertNotIn('auth.user', models)
+
+    def test_filtered_relation_blocks_traversal(self):
+        schema = OnlyBookNameSchema(Book)
+        ast = DjangoQLParser().parse('author.username = "x"')
+        with self.assertRaises(DjangoQLSchemaError):
+            schema.validate(ast)
+
+    def test_llm_description_respects_field_filter(self):
+        description = describe_schema_for_llm(BookWithoutGenreSchema(Book))
+        book_fields = description['models']['core.book']
+        self.assertNotIn('genre', book_fields)
+        self.assertNotIn('price', book_fields)
+        self.assertIn('name', book_fields)
 
 
 class DjangoQLSchemaTest(TestCase):
