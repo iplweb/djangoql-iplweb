@@ -314,10 +314,12 @@ lines, right after the fixed legend block and before `start model:`:
 # to-many relations: <rel>__count; numeric via dot <rel>.<field>__sum|avg|min|max
 ```
 
-Each line is independent: a schema using only `DatePartsSchemaMixin` gets the
-first two (or just the second, if it has no plain `date` fields) and no
-`# to-many relations` line; a schema using only `AggregateSchemaMixin` gets
-only the third. **A schema that uses neither mixin gets none of this** — no
+A schema using only `DatePartsSchemaMixin` gets the `date`/`datetime` `lookups`
+notes but no relation `aggregates` note (and no `# to-many relations` line in
+compact); a schema using only `AggregateSchemaMixin` gets the reverse. The `date
+fields also` and `datetime fields also` compact lines appear together whenever
+any date or datetime field is present — a schema with only a bare `TimeField`
+is the only case that yields the datetime-only line alone. **A schema that uses neither mixin gets none of this** — no
 `lookups` key on `date`/`datetime`, no `aggregates` key on `relation`, and no
 extra compact header lines. Confirm it yourself on a plain schema:
 
