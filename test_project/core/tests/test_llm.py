@@ -14,12 +14,68 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from djangoql.extras import AutocompleteSchemaMixin
-from djangoql.llm import describe_schema_for_llm
+from djangoql.extras import (
+    AggregateSchemaMixin,
+    AutocompleteSchemaMixin,
+    DatePartsSchemaMixin,
+)
+from djangoql.llm import _build_schema_ir, describe_schema_for_llm
 from djangoql.parser import DjangoQLParser
 from djangoql.schema import DjangoQLSchema
 
 from ..models import Book
+
+
+class DerivedSchema(AggregateSchemaMixin, DatePartsSchemaMixin, DjangoQLSchema):
+    include = (Book, User)
+
+
+class DerivedCapabilitiesTest(TestCase):
+    def test_capabilities_detected_from_all_fields(self):
+        # Derived fields are suggested=False, but detection scans schema.models
+        ir = _build_schema_ir(DerivedSchema(Book), 50)
+        caps = ir['capabilities']
+        self.assertIn('year', caps['date_parts'])
+        self.assertIn('hour', caps['time_parts'])
+        self.assertTrue(caps['has_date_extract'])
+        self.assertTrue(caps['has_time_extract'])
+        # User has a reverse to-many to Book -> book__count (CountField)
+        self.assertTrue(caps['relation_count'])
+
+    def test_time_parts_never_land_in_date_parts(self):
+        ir = _build_schema_ir(DerivedSchema(Book), 50)
+        self.assertNotIn('hour', ir['capabilities']['date_parts'])
+
+    def test_plain_schema_has_empty_capabilities(self):
+        ir = _build_schema_ir(DjangoQLSchema(Book), 50)
+        caps = ir['capabilities']
+        self.assertEqual([], caps['date_parts'])
+        self.assertEqual([], caps['time_parts'])
+        self.assertFalse(caps['relation_count'])
+
+    def test_derived_fields_absent_but_base_present(self):
+        ir = _build_schema_ir(DerivedSchema(Book), 50)
+        book = ir['models']['core.book']
+        self.assertIn('written', book)  # base datetime field stays
+        self.assertNotIn('written__year', book)
+        self.assertNotIn('written__date', book)
+        user = ir['models']['auth.user']
+        self.assertNotIn('book__count', user)
+
+    def test_suggested_true_derived_field_still_excluded(self):
+        from djangoql.extras import DatePartField
+
+        class SurfacedSchema(DjangoQLSchema):
+            def get_fields(self, model):
+                fields = list(super().get_fields(model))
+                if model == Book:
+                    f = DatePartField('written', 'year', model=model)
+                    f.suggested = True  # force it visible
+                    fields.append(f)
+                return fields
+
+        ir = _build_schema_ir(SurfacedSchema(Book), 50)
+        self.assertNotIn('written__year', ir['models']['core.book'])
 
 
 class AuthorPickerSchema(AutocompleteSchemaMixin, DjangoQLSchema):
