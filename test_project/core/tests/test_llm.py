@@ -390,6 +390,35 @@ class RelationValuesTest(TestCase):
         schema = DjangoQLSchema(Book)
         self.assertEqual('name', _default_match_field(schema, 'core.book'))
 
+    def test_default_match_field_prefers_username_over_first_alphabetical(self):
+        # auth.User has no 'name' field; alphabetically the first suggested
+        # str field is 'email', but 'username' is the actual identifier and
+        # must win via the preferred-fields priority list.
+        from djangoql.llm import _default_match_field
+
+        schema = DjangoQLSchema(Book)
+        self.assertEqual('username', _default_match_field(schema, 'auth.user'))
+
+    def test_default_match_field_prefers_priority_list_over_alphabetical(self):
+        from djangoql.llm import _default_match_field
+
+        class _StubField:
+            def __init__(self, ftype, suggested=True):
+                self.type = ftype
+                self.suggested = suggested
+
+        class _StubSchema:
+            models = {
+                'x.y': {
+                    'aardvark': _StubField('str', suggested=True),
+                    'nazwa': _StubField('str', suggested=True),
+                },
+            }
+
+        # 'aardvark' sorts first alphabetically, but 'nazwa' is on the
+        # preferred-identifier list and must win.
+        self.assertEqual('nazwa', _default_match_field(_StubSchema(), 'x.y'))
+
     def test_default_match_field_skips_unsuggested_fields(self):
         from djangoql.llm import _default_match_field
 
@@ -470,8 +499,8 @@ class RelationValuesTest(TestCase):
 
     def test_fk_options_true_ignores_threshold(self):
         # Test on similar_books -> Book, whose default identifying field is
-        # deterministically 'name'. (For auth.User the default would be the
-        # first alphabetical string field, 'email', not 'username'.)
+        # deterministically 'name'. (For auth.User the default is now
+        # 'username', via the preferred-identifier priority list.)
         for n in ('Dune', 'Solaris'):
             self._book(n)
 

@@ -230,6 +230,27 @@ def _field_metadata(field):
     return meta
 
 
+#: Preferred names for a relation's identifying field (EN + PL), in priority
+#: order. Checked before falling back to "first suggested str field", so
+#: auto-mode emits a readable dictionary identifier (nazwa/skrot/username)
+#: instead of whatever happens to sort first alphabetically (email, an
+#: internal enum column).
+_PREFERRED_MATCH_FIELDS = (
+    'name',
+    'nazwa',
+    'title',
+    'tytul',
+    'label',
+    'skrot',
+    'symbol',
+    'kod',
+    'code',
+    'slug',
+    'username',
+    'login',
+)
+
+
 def _default_match_field(schema, related_label):
     """Pick an identifying field among the related model's schema-visible
     fields.
@@ -237,20 +258,26 @@ def _default_match_field(schema, related_label):
     Restricting to schema fields inherits DjangoQL's own exclusions (e.g. the
     password field is never exposed), so we never surface a sensitive column.
     Also skips fields with ``suggested`` set to False, since those are hidden
-    from the emitted schema description too. Prefers a field literally named
-    ``name``, else the first string field. Returns None when the related
-    model exposes no (suggested) string field.
+    from the emitted schema description too. Prefers, in priority order, a
+    field whose name appears in :data:`_PREFERRED_MATCH_FIELDS` (e.g.
+    ``name``, ``nazwa``, ``username``); else the first (suggested) string
+    field. Returns None when the related model exposes no (suggested) string
+    field.
     """
     fields = schema.models.get(related_label, {})
-    name_field = fields.get('name')
-    if (
-        name_field is not None
-        and getattr(name_field, 'suggested', True)
-        and getattr(name_field, 'type', None) == 'str'
-    ):
-        return 'name'
+
+    def _ok(f):
+        return (
+            f is not None
+            and getattr(f, 'suggested', True)
+            and getattr(f, 'type', None) == 'str'
+        )
+
+    for pref in _PREFERRED_MATCH_FIELDS:
+        if _ok(fields.get(pref)):
+            return pref
     for fname, f in fields.items():
-        if getattr(f, 'suggested', True) and getattr(f, 'type', None) == 'str':
+        if _ok(f):
             return fname
     return None
 
