@@ -173,7 +173,10 @@ What each part of either format carries:
 - **`operators_by_type`** — emitted once, this is the legend: for every
   scalar type (`int`, `float`, `date`, `datetime`, `str`, `bool`) and the two
   pseudo-types `relation` and `object_reference`, the operators legal for
-  that type, plus a worked `example` for scalar types.
+  that type, plus a worked `example` for scalar types. If the schema uses the
+  date-parts / aggregate mixins, the `date`, `datetime` and `relation` entries
+  also gain a `lookups` / `aggregates` note — see
+  [Derived fields](#derived-fields-date-parts-and-aggregates) below.
 - **`models`** — every model reachable from the root, keyed by label. This is
   the field *graph*: a field with `relates_to` names the model it relates
   to, so the LLM can traverse `author.country.name` the same way
@@ -243,6 +246,89 @@ DjangoQL's own value matching accepts and translates back to the stored
 value: `"genre": {"type": "int?", "choices": ["Science Fiction", "Fantasy",
 "Non-Fiction"]}`. Because choices live on the field definition, this costs no
 database query and needs no opt-in.
+
+### Derived fields (date parts and aggregates)
+
+Two optional schema mixins (`djangoql.extras.DatePartsSchemaMixin` and
+`djangoql.extras.AggregateSchemaMixin`) each generate a whole family of extra
+queryable fields per field they attach to:
+
+- **Date parts** — every `date` field gains up to eight virtual lookups:
+  `<field>__year`, `__month`, `__day`, `__week_day`, `__quarter`, `__week`,
+  `__iso_year`, `__iso_week_day`. Every `datetime` field gains those same
+  eight plus `__hour`, `__minute`, `__second`, `__date`, and `__time` — up to
+  thirteen virtual fields from one real one.
+- **Aggregates** — every to-many relation (reverse FK or M2M) gains a
+  `<relation>__count` field. Numeric aggregates
+  (`<relation>.<numeric_field>__sum|avg|min|max`) are *not* separate fields at
+  all — they're synthesized on the fly from the dot-syntax pattern when the
+  parser encounters them, so only `<relation>__count` ever exists as a real
+  field object.
+
+Listing all of that per field would dominate the description — one
+`datetime` field alone could add thirteen entries. So none of it is listed
+individually: every generated field (`DatePartField`, `DateExtractField`,
+`TimeExtractField`, `AggregateField` and its subclasses) is created with
+`suggested=False`, and `describe_schema_for_llm()` excludes them from
+`models` by class as well, so even a schema that forces one back to
+`suggested=True` still won't see it listed.
+
+Instead, `describe_schema_for_llm()` scans the *whole* schema once —
+including those hidden fields — and, only for the capabilities it actually
+finds, adds a `lookups` note to the `date`/`datetime` legend entries and an
+`aggregates` note to the `relation` entry. One note each, no matter how many
+date/datetime fields or to-many relations the schema has:
+
+```json
+"date": {
+  "operators": ["=", "!=", ">", ">=", "<", "<=", "in", "not in"],
+  "example": "x = \"2021-06-01\"",
+  "lookups": "also <field>__<part> (integer): year, month, day, week_day, quarter, week, iso_year, iso_week_day. e.g. utworzono__year = 2021"
+},
+"datetime": {
+  "operators": ["=", "!=", ">", ">=", "<", "<=", "~", "!~", "in", "not in"],
+  "example": "x = \"2021-06-01 14:30\"",
+  "lookups": "also <field>__<part> (integer): year, month, day, week_day, quarter, week, iso_year, iso_week_day, hour, minute, second; <field>__date (date); <field>__time (time). e.g. utworzono__year = 2021, utworzono__date = \"2021-06-01\""
+},
+"relation": {
+  "operators": ["= None", "!= None", "<relation>.<field> (traverse with a dot)"],
+  "aggregates": "to-many relation: <rel>__count (integer), e.g. autorzy__count >= 2. Numeric aggregates via dot: <rel>.<numeric_field>__sum|avg|min|max, e.g. autorzy.rating__avg"
+}
+```
+
+(`utworzono__year` and `autorzy__count` are fixed, generic worked examples
+baked into the note text itself — not references to fields in *your*
+schema — the same way the scalar legend entries' `example` is generic.)
+
+From that legend alone, the model can build `published_date__year = 2021`
+against any `date` field, `written__date = "2021-06-01"` against any
+`datetime` field, or `books__count >= 2` / `books.rating__avg > 4` against
+any to-many relation — none of which ever appears under `models` by name.
+
+The compact format adds the same information as up to three extra header
+lines, right after the fixed legend block and before `start model:`:
+
+```text
+# date fields also: <field>__<part> (int): year, month, day, week_day, quarter, week, iso_year, iso_week_day
+# datetime fields also: <field>__<part>: hour, minute, second; <field>__date; <field>__time
+# to-many relations: <rel>__count; numeric via dot <rel>.<field>__sum|avg|min|max
+```
+
+Each line is independent: a schema using only `DatePartsSchemaMixin` gets the
+first two (or just the second, if it has no plain `date` fields) and no
+`# to-many relations` line; a schema using only `AggregateSchemaMixin` gets
+only the third. **A schema that uses neither mixin gets none of this** — no
+`lookups` key on `date`/`datetime`, no `aggregates` key on `relation`, and no
+extra compact header lines. Confirm it yourself on a plain schema:
+
+```shell
+$ python manage.py djangoql_describe_schema_for_llm library.Book --format json --indent 2
+```
+
+The `date`/`datetime`/`relation` legend entries come back with only
+`operators` (and `example`) — and `models` has no `__year`-, `__date`- or
+`__count`-suffixed entries anywhere, because the mixins were never attached
+to that schema in the first place.
 
 ### Related-model values
 
