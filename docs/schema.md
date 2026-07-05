@@ -30,6 +30,40 @@ In the example above we created a schema that does 3 things:
 
 An important note about `suggest_options`: it looks for the `choices` model field parameter first, and if it's not specified - it will synchronously pull all values for given model fields, so you should avoid large querysets there. If you'd like to define custom suggestion options, see below.
 
+### Declarative per-model field filtering
+
+Instead of overriding `get_fields()` and branching on the model, you can limit
+fields declaratively with `include_fields` (an allowlist) or `exclude_fields`
+(a denylist), keyed by model class:
+
+``` python
+from djangoql.schema import DjangoQLSchema
+
+
+class UserQLSchema(DjangoQLSchema):
+    include_fields = {
+        Group: ['name'],          # expose ONLY these fields of Group
+    }
+    exclude_fields = {
+        User: ['password'],       # expose all fields of User EXCEPT these
+    }
+```
+
+Rules:
+
+- A model listed in `include_fields` exposes **only** the named fields.
+- A model listed in `exclude_fields` exposes **all fields except** the named ones.
+- A model in neither dict exposes all fields (the default).
+- A model may appear in `include_fields` **or** `exclude_fields`, not both.
+- Unknown field names raise `DjangoQLSchemaError` when the schema is created,
+  so typos surface immediately.
+
+Filtering a relation field (for example dropping `author` from a `Book` schema)
+also removes that traversal - you can no longer query `author.username`, and
+the related model is not introspected unless another retained relation reaches
+it. Model-level `include`/`exclude` and field-level
+`include_fields`/`exclude_fields` can be combined in the same schema.
+
 ## Custom search fields
 
 Deeper search customization can be achieved with custom search fields. Custom search fields can be used to search by annotations, define custom suggestion options, or define fully custom search logic. In `djangoql.schema`, DjangoQL defines the following base field classes that you may subclass to define your own behavior:
