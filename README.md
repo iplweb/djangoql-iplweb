@@ -41,7 +41,7 @@ See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 - **Pretty-print / formatting** — re-indent a query via `format_query()` or the `…/format/` endpoint
 - **Per-branch record counts** — see how many rows each sub-expression matches via `explain()` or the `…/explain/` endpoint
 - **Syntax highlighting** — a tokenizer (`DjangoQLHighlight.tokenize`) plus a lightweight, restyleable overlay; no palette or editor imposed
-- **Describe a schema for an LLM** — `describe_schema_for_llm()` (and the `djangoql_describe_schema_for_llm` command) emit the full search space as a compact JSON or text description, ready to teach a model to generate valid DjangoQL
+- **Describe a schema for an LLM** — `describe_schema_for_llm()` (and the `djangoql_describe_schema_for_llm` command) emit the full search space as JSON or compact text, ready to teach a model to generate valid DjangoQL
 
 ## Installation
 

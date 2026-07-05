@@ -159,6 +159,8 @@ Conventions worth knowing when reading (or grepping) this format:
   joined with `;`; a `'__str__'` spec renders as `examples: "...", "..."`
   instead).
 - **`?`** right after the type marks a nullable scalar field (`date?`).
+- **`#`** before the type marks an `object_reference` picker field (matched by
+  primary key), e.g. `author  # str (object_reference)`.
 - **`choices: a | b | c`** lists a closed set of values.
 - A quoted string after the type is the field's `label`; an em-dash and more
   text after it is the `help_text` (`"Book Title" — The full title...`).
@@ -177,9 +179,10 @@ What each part of either format carries:
   to, so the LLM can traverse `author.country.name` the same way
   introspection does. Only fields that are actually suggested in
   auto-completion are included, so the description matches what a user sees.
-- **`suggested_values`** — for fields that expose concrete options (choices or
-  an autocomplete picker), a sample of real values, so the model can pick
-  valid ones rather than guess.
+- **`suggested_values`** — for open-ended picker/autocomplete fields without
+  `choices`, a sample of real values, so the model can pick valid ones rather
+  than guess. Fields with `choices` never also carry `suggested_values` (choices
+  take precedence).
 - **`label`** / **`help_text`** — human-readable metadata copied from the
   underlying model field, when it adds information beyond the field name.
 - **`choices`** — for a field defined with `choices=`, the closed set of labels
