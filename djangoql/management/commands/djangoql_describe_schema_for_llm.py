@@ -60,6 +60,14 @@ class Command(BaseCommand):
             '(default: 50). 0 disables automatic relation values; explicit '
             'fk_options on the schema still apply.',
         )
+        parser.add_argument(
+            '--format',
+            dest='format',
+            choices=['json', 'compact'],
+            default='json',
+            help='Output format: json (default, machine-readable) or compact '
+            '(terse text, smallest for large schemas).',
+        )
 
     def handle(self, *args, **options):
         model = self._resolve_model(options['model'])
@@ -71,14 +79,24 @@ class Command(BaseCommand):
                 'Could not build %s for %s: %s'
                 % (schema_cls.__name__, options['model'], e),
             )
+        fmt = options['format']
         bundle = describe_schema_for_llm(
             schema,
+            format=fmt,
             max_fk_options=options['max_fk_options'],
         )
-        indent = options['indent'] or None
-        self.stdout.write(
-            json.dumps(bundle, indent=indent, ensure_ascii=False, default=str),
-        )
+        if fmt == 'compact':
+            self.stdout.write(bundle)
+        else:
+            indent = options['indent'] or None
+            self.stdout.write(
+                json.dumps(
+                    bundle,
+                    indent=indent,
+                    ensure_ascii=False,
+                    default=str,
+                ),
+            )
 
     def _resolve_model(self, label):
         try:

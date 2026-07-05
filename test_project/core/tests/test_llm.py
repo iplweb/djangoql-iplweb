@@ -192,6 +192,18 @@ class DjangoqlSchemaCommandTest(TestCase):
         similar = data['models']['core.book']['similar_books']
         self.assertNotIn('related_values', similar)
 
+    def test_compact_format_prints_text(self):
+        out = self._run('core.Book', '--format', 'compact')
+        self.assertIn('start model: core.book', out)
+        self.assertIn('-> auth.user', out)
+        # compact output is not JSON
+        with self.assertRaises(ValueError):
+            json.loads(out)
+
+    def test_json_is_the_default_format(self):
+        data = json.loads(self._run('core.Book'))
+        self.assertIn('operators_by_type', data)
+
 
 class RelationValuesTest(TestCase):
     def _book(self, name):
