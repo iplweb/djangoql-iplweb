@@ -402,7 +402,9 @@ relation.
 
 Auto mode also skips any relation whose target model belongs to one of
 Django's own sensitive apps — `auth`, `admin`, `contenttypes`, `sessions` —
-so schema description never auto-dumps usernames, permission codenames, or
+as well as the project's configured `AUTH_USER_MODEL`, even when a custom
+user model lives in an otherwise non-sensitive app (e.g. `myapp.User`). This
+way schema description never auto-dumps usernames, permission codenames, or
 session data into a prompt. An explicit `fk_options` entry for such a
 relation overrides the exclusion; the skip only applies to auto mode.
 

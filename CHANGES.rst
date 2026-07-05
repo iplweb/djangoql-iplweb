@@ -1,3 +1,16 @@
+0.30.2 (2026-07-05)
+-------------------
+
+* **LLM schema privacy fix:** auto mode now also excludes the project's
+  ``AUTH_USER_MODEL`` from embedded related values, not just models in the
+  built-in sensitive app-labels (``auth``, ``admin``, ``contenttypes``,
+  ``sessions``). A custom user model living in an otherwise non-sensitive app
+  (e.g. ``myapp.User``) previously fell through the guard and had its user
+  fields (usernames, etc.) auto-emitted. The exclusion check now also compares
+  each relation's target against ``get_user_model()``, guarded so a
+  malformed/missing ``AUTH_USER_MODEL`` can never break schema description. An
+  explicit ``fk_options`` entry still overrides the exclusion, as before.
+
 0.30.1 (2026-07-05)
 -------------------
 
