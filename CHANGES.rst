@@ -1,5 +1,5 @@
-Unreleased
-----------
+0.30.0 (2026-07-05)
+-------------------
 
 * **Declarative per-model field filtering:** new ``include_fields`` and
   ``exclude_fields`` schema attributes (``{model: [field names]}``) let you
