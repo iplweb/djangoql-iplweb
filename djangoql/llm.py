@@ -25,6 +25,8 @@ models that powers autocomplete); this module only layers the operator matrix,
 examples and grammar notes on top.
 """
 
+import logging
+
 from django.core.exceptions import FieldDoesNotExist
 
 from .extras import (
@@ -35,6 +37,9 @@ from .extras import (
     TimeExtractField,
 )
 from .schema import RelationField
+
+
+logger = logging.getLogger(__name__)
 
 
 #: Operators that make sense per field ``type``. Derived from
@@ -287,7 +292,9 @@ def _distinct_values(related_model, field_name, limit):
 
     ``limit=None`` forces emission (no cardinality gate), capped at
     MAX_SUGGESTED_VALUES. Any DB/field error yields None so schema description
-    never breaks.
+    never breaks -- the error is logged (warning, with traceback) so a dead
+    DB or a bad field name doesn't silently vanish into a schema with no
+    ``related_values``.
     """
     try:
         qs = (
@@ -303,6 +310,13 @@ def _distinct_values(related_model, field_name, limit):
                 return None
         return [str(v) for v in rows if v is not None] or None
     except Exception:
+        logger.warning(
+            'describe_schema_for_llm: nie udało się pobrać wartości '
+            '%s.%s -- pomijam (schemat bez related_values dla tej relacji)',
+            related_model._meta.label,
+            field_name,
+            exc_info=True,
+        )
         return None
 
 
@@ -344,7 +358,9 @@ def _str_examples(related_model, limit):
     """Up to ``limit`` ``str(obj)`` rows of the related model, or None.
 
     ``limit=None`` forces emission capped at MAX_SUGGESTED_VALUES. Gated by
-    row count (str() cannot be made distinct in SQL). Any error yields None.
+    row count (str() cannot be made distinct in SQL). Any error yields None
+    -- logged (warning, with traceback) so a dead DB doesn't silently vanish
+    into a schema with no ``related_examples``.
     """
     try:
         if limit is None:
@@ -355,6 +371,12 @@ def _str_examples(related_model, limit):
             rows = related_model.objects.all()[:limit]
         return [str(o) for o in rows] or None
     except Exception:
+        logger.warning(
+            'describe_schema_for_llm: nie udało się pobrać przykładów '
+            '%s -- pomijam (schemat bez related_examples dla tej relacji)',
+            related_model._meta.label,
+            exc_info=True,
+        )
         return None
 
 

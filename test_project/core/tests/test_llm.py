@@ -383,6 +383,29 @@ class RelationValuesTest(TestCase):
         self.assertNotIn('related_values', author)
         self.assertNotIn('password', json.dumps(author))
 
+    def test_distinct_values_logs_on_error(self):
+        # A bad field name blows up inside the try/except in _distinct_values;
+        # it must still return None, but the error must no longer be silent.
+        from djangoql.llm import _distinct_values
+
+        with self.assertLogs('djangoql.llm', level='WARNING'):
+            result = _distinct_values(Book, 'no_such_field', 100)
+        self.assertIsNone(result)
+
+    def test_str_examples_logs_on_error(self):
+        # count() raising blows up inside the try/except in _str_examples;
+        # it must still return None, but the error must no longer be silent.
+        from unittest.mock import patch
+
+        from djangoql.llm import _str_examples
+
+        with patch.object(
+            Book.objects, 'count', side_effect=RuntimeError('boom')
+        ):
+            with self.assertLogs('djangoql.llm', level='WARNING'):
+                result = _str_examples(Book, 100)
+        self.assertIsNone(result)
+
     def test_default_match_field_prefers_visible_str_field(self):
         # The heuristic must pick from schema-visible fields (never password).
         from djangoql.llm import _default_match_field
