@@ -351,6 +351,8 @@ class RelationField(DjangoQLField):
 class DjangoQLSchema:
     include = ()  # models to include into introspection
     exclude = ()  # models to exclude from introspection
+    include_fields = {}  # {model: [field names]} - expose ONLY these fields
+    exclude_fields = {}  # {model: [field names]} - expose all EXCEPT these
     suggest_options = None
 
     def __init__(self, model):
@@ -362,6 +364,27 @@ class DjangoQLSchema:
             raise DjangoQLSchemaError(
                 _('Either include or exclude can be specified, but not both'),
             )
+        overlap = set(self.include_fields) & set(self.exclude_fields)
+        if overlap:
+            raise DjangoQLSchemaError(
+                _(
+                    'Either include_fields or exclude_fields can be specified '
+                    'for {models}, but not both',
+                ).format(models=', '.join(str(m) for m in overlap)),
+            )
+        for rules in (self.include_fields, self.exclude_fields):
+            for field_model, field_names in rules.items():
+                valid = {f.name for f in field_model._meta.get_fields()}
+                unknown = [n for n in field_names if n not in valid]
+                if unknown:
+                    raise DjangoQLSchemaError(
+                        _(
+                            'Unknown field(s) {fields} specified for {model}',
+                        ).format(
+                            fields=', '.join(unknown),
+                            model=field_model,
+                        ),
+                    )
         if self.excluded(model):
             raise DjangoQLSchemaError(
                 _(
@@ -431,10 +454,31 @@ class DjangoQLSchema:
         Override this method to limit field options. You can either return a
         plain list of field names from it, like ['id', 'name'], or call
         .super() and exclude unwanted fields from its result.
+
+        For a declarative alternative to overriding this method, set
+        ``include_fields`` / ``exclude_fields`` on the schema class.
         """
-        return sorted(
-            [f.name for f in model._meta.get_fields() if f.name != 'password'],
-        )
+        names = [
+            f.name for f in model._meta.get_fields() if f.name != 'password'
+        ]
+        return sorted(self.apply_field_rules(model, names))
+
+    def apply_field_rules(self, model, names):
+        """
+        Trim ``names`` according to ``include_fields`` / ``exclude_fields``.
+
+        If ``model`` is a key in ``include_fields``, only the listed names are
+        kept (allowlist). Otherwise, if it is a key in ``exclude_fields``, the
+        listed names are dropped (denylist). A model in neither dict is
+        returned unchanged.
+        """
+        only = self.include_fields.get(model)
+        if only is not None:
+            return [n for n in names if n in only]
+        excluded = self.exclude_fields.get(model)
+        if excluded is not None:
+            return [n for n in names if n not in excluded]
+        return names
 
     def get_field_instance(self, model, field_name):
         field = model._meta.get_field(field_name)
@@ -611,7 +655,7 @@ class DjangoQLSchema:
         if hint:
             # Period separates the message from the hint sentence so they don't
             # run together ("...username. Relation aggregates...").
-            message = '%s. %s' % (message, hint)
+            message = f'{message}. {hint}'
         return message
 
     def collect_annotations(self, node):

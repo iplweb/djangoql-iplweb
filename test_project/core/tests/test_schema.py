@@ -6,6 +6,7 @@ from django.db import models
 from django.test import TestCase
 
 from djangoql.exceptions import DjangoQLSchemaError
+from djangoql.llm import describe_schema_for_llm
 from djangoql.parser import DjangoQLParser
 from djangoql.schema import (
     DateField,
@@ -56,6 +57,77 @@ class BookCustomSearchSchema(DjangoQLSchema):
             return [
                 WrittenInYearField(),
             ]
+
+
+class OnlyBookNameSchema(DjangoQLSchema):
+    include_fields = {Book: ['name', 'is_published']}
+
+
+class BookWithoutGenreSchema(DjangoQLSchema):
+    exclude_fields = {Book: ['genre', 'price']}
+
+
+class FieldFilteringTest(TestCase):
+    def _book_fields(self, schema):
+        return set(serializer.serialize(schema)['models']['core.book'].keys())
+
+    def test_include_fields_is_allowlist(self):
+        fields = self._book_fields(OnlyBookNameSchema(Book))
+        self.assertEqual(fields, {'name', 'is_published'})
+
+    def test_exclude_fields_is_denylist(self):
+        fields = self._book_fields(BookWithoutGenreSchema(Book))
+        self.assertNotIn('genre', fields)
+        self.assertNotIn('price', fields)
+        self.assertIn('name', fields)
+        self.assertIn('rating', fields)
+
+    def test_unfiltered_model_keeps_all_fields(self):
+        default = self._book_fields(DjangoQLSchema(Book))
+        filtered = self._book_fields(BookWithoutGenreSchema(Book))
+        self.assertEqual(default - filtered, {'genre', 'price'})
+
+
+class ConflictingFieldRulesSchema(DjangoQLSchema):
+    include_fields = {Book: ['name']}
+    exclude_fields = {Book: ['genre']}
+
+
+class TypoFieldSchema(DjangoQLSchema):
+    include_fields = {Book: ['naem']}
+
+
+class FieldFilteringValidationTest(TestCase):
+    def test_same_model_in_both_dicts_raises(self):
+        with self.assertRaises(DjangoQLSchemaError):
+            ConflictingFieldRulesSchema(Book)
+
+    def test_unknown_field_name_raises_and_is_named(self):
+        with self.assertRaises(DjangoQLSchemaError) as ctx:
+            TypoFieldSchema(Book)
+        self.assertIn('naem', str(ctx.exception))
+
+
+class FieldFilteringConsequencesTest(TestCase):
+    def test_filtered_relation_drops_related_model(self):
+        # OnlyBookNameSchema keeps only Book.name, dropping the `author` FK,
+        # so User must never be introspected.
+        models = serializer.serialize(OnlyBookNameSchema(Book))['models']
+        self.assertEqual(set(models), {'core.book'})
+        self.assertNotIn('auth.user', models)
+
+    def test_filtered_relation_blocks_traversal(self):
+        schema = OnlyBookNameSchema(Book)
+        ast = DjangoQLParser().parse('author.username = "x"')
+        with self.assertRaises(DjangoQLSchemaError):
+            schema.validate(ast)
+
+    def test_llm_description_respects_field_filter(self):
+        description = describe_schema_for_llm(BookWithoutGenreSchema(Book))
+        book_fields = description['models']['core.book']
+        self.assertNotIn('genre', book_fields)
+        self.assertNotIn('price', book_fields)
+        self.assertIn('name', book_fields)
 
 
 class DjangoQLSchemaTest(TestCase):

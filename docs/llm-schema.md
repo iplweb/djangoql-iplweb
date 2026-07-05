@@ -500,3 +500,11 @@ Validation errors are written to be actionable — an unknown field yields
 for a repair step: generate a query, validate it, and on failure hand the error
 back to the model for another attempt. Only once `validate_query()` returns
 `None` do you run the query against real data.
+
+## Field filtering also trims the description
+
+`describe_schema_for_llm` reads the same introspected schema as autocomplete and
+query validation. Any field removed via `include_fields` / `exclude_fields`
+(see [Schema & custom fields](schema.md)) is therefore absent from the LLM
+description as well — there is no separate "visible to the LLM but not to
+autocomplete" state.

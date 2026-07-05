@@ -1,3 +1,17 @@
+Unreleased
+----------
+
+* **Declarative per-model field filtering:** new ``include_fields`` and
+  ``exclude_fields`` schema attributes (``{model: [field names]}``) let you
+  expose ONLY certain fields of a model (allowlist) or all fields EXCEPT certain
+  ones (denylist), as an alternative to overriding ``get_fields()``. A model may
+  appear in one dict or the other, not both, and unknown field names raise
+  ``DjangoQLSchemaError`` at schema creation. Because filtering happens during
+  introspection, it also trims the autocomplete suggestions, the query
+  validation surface, and the ``describe_schema_for_llm`` output. Filtering out
+  a relation field additionally removes that traversal and drops the related
+  model when nothing else reaches it.
+
 0.29.0 (2026-07-05)
 -------------------
 

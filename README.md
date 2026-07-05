@@ -33,7 +33,7 @@ See a video: [DjangoQL demo](https://youtu.be/oKVff4dHZB8)
 - Searches across model relations via joins, e.g. `author.last_name = "Tolstoy"`
 - Works with any Django model and drops into the Django admin with a single mixin
 - Live auto-completion of model field names and values in the admin
-- Configurable schema to restrict searchable models/fields and provide suggestion options
+- Configurable schema to restrict searchable models/fields (including declarative per-model `include_fields`/`exclude_fields` allowlists and denylists) and provide suggestion options
 - Custom search fields for annotations and fully custom search logic
 - Internationalized error messages with translation catalogs for 11 locales
 - Usable outside the Django admin, including a standalone JavaScript completion widget
