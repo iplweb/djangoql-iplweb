@@ -1,3 +1,41 @@
+0.29.0 (2026-07-05)
+-------------------
+
+* **Richer LLM schema description:** ``describe_schema_for_llm`` now enriches
+  each field with its ``label`` (from ``verbose_name``, omitted when it merely
+  duplicates the field name) and ``help_text``, always emits a closed-set
+  ``choices`` list for choice fields (the human labels DjangoQL accepts, read
+  without a query), and — gated by cardinality — embeds concrete related-model
+  values. A ``max_fk_options`` threshold (default 50; ``--max-fk-options``;
+  ``0`` disables auto mode) and a per-relation ``fk_options = {Model:
+  {relation: spec}}`` schema attribute (``spec`` = a field name / list of field
+  names / ``'__str__'`` / ``True`` / ``False``) control what is embedded. Auto
+  mode picks the identifying field only from schema-visible, suggested fields
+  (so ``password`` and hidden fields are never surfaced) and excludes sensitive
+  target app-labels (``auth``, ``admin``, ``contenttypes``, ``sessions``); an
+  explicit ``fk_options`` entry overrides the exclusion.
+
+* **Compressed, two-format output:** the per-field verbose shape is replaced by
+  a compact one. ``describe_schema_for_llm(schema, format='json')`` (default)
+  emits a one-time ``operators_by_type`` legend (types plus the pseudo-types
+  ``relation`` and ``object_reference``) instead of repeating operators and
+  examples on every field, and renders fields tersely — a field with no extras
+  is a bare ``"name": "type"`` string, otherwise an object with only
+  informative keys, and a ``?`` suffix on the type marks it nullable.
+  ``format='compact'`` emits a terse text block (one line per field) that is
+  smallest for large schemas. The management command gains ``--format
+  {json,compact}``.
+
+* **Collapsed derived-field lookups:** the date-parts and aggregate schema
+  mixins generate many virtual fields (``<date>__year`` … ``__second``,
+  ``<date>__date``/``__time``, ``<rel>__count``). These are no longer listed
+  per field; instead their capability is described once in the type legend —
+  ``date``/``datetime`` gain a ``lookups`` note and ``relation`` gains an
+  ``aggregates`` note (``<rel>__count`` plus the dot-syntax numeric aggregates
+  ``<rel>.<field>__sum|avg|min|max``). The notes appear only when the schema
+  actually uses those mixins, and their worked examples reflect only the
+  lookups actually available.
+
 0.28.0 (2026-07-04)
 -------------------
 
