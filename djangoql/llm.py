@@ -27,6 +27,7 @@ examples and grammar notes on top.
 
 import logging
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 
@@ -117,6 +118,44 @@ def _is_sensitive_target(model):
         # get_user_model() raises ImproperlyConfigured if AUTH_USER_MODEL
         # is malformed/missing; schema description must never break on that.
         return False
+
+
+def _no_value_targets(schema):
+    """Resolve ``schema.no_value_targets`` to a set of model classes.
+
+    ``no_value_targets`` is an optional schema attribute: an iterable of model
+    classes and/or ``"app_label.Model"`` dotted labels whose row values must
+    **never** be emitted -- a hard denylist that overrides both ``fk_options``
+    and ``max_fk_options`` (see :func:`_relation_values`). Use it to keep
+    institution-specific data (unit / institution names, etc.) out of a
+    committed or shared schema description, independent of row counts.
+
+    Unknown labels are logged and skipped (schema description must never break
+    on a typo). The resolved set is memoised on the schema instance.
+    """
+    cached = getattr(schema, '_no_value_targets_cache', None)
+    if cached is not None:
+        return cached
+    resolved = set()
+    for entry in getattr(schema, 'no_value_targets', None) or ():
+        if isinstance(entry, str):
+            try:
+                resolved.add(apps.get_model(entry))
+            except (LookupError, ValueError):
+                logger.warning(
+                    'describe_schema_for_llm: no_value_targets -- nieznany '
+                    'model %r, pomijam',
+                    entry,
+                )
+        else:
+            resolved.add(entry)
+    try:
+        schema._no_value_targets_cache = resolved
+    except Exception:
+        # A schema forbidding attribute assignment (e.g. __slots__) simply
+        # re-resolves per call -- correctness over the memo optimisation.
+        pass
+    return resolved
 
 
 #: Canonical ordering for date/time lookup parts, so the legend note is stable.
@@ -412,7 +451,12 @@ def _examples_entry(related_model, limit):
 def _relation_values(schema, field, name, max_fk_options):
     """Concrete match values for a relation, honouring fk_options.
 
-    Dispatch on the schema's fk_options entry:
+    A hard ``no_value_targets`` denylist (see :func:`_no_value_targets`) is
+    checked first and, when it matches the relation target, suppresses values
+    unconditionally -- overriding every ``fk_options`` spec and any
+    ``max_fk_options``.
+
+    Otherwise dispatch on the schema's fk_options entry:
       - False        -> nothing (no query)
       - True         -> force the default field, ignore the threshold
       - 'field'      -> that field's distinct values, gated by threshold
@@ -422,6 +466,8 @@ def _relation_values(schema, field, name, max_fk_options):
     Returns {} when nothing should be emitted; never raises.
     """
     related_model = field.related_model
+    if related_model in _no_value_targets(schema):
+        return {}
     spec = _fk_spec(schema, field, name)
 
     if spec is False:

@@ -677,3 +677,73 @@ class CompactFormatTest(TestCase):
         facts = {'type': 'str', 'nullable': True, 'object_reference': True}
         line = _compact_field('picker', facts, 6)
         self.assertIn('# str? (object_reference)', line)
+
+
+class NoValueTargetsTest(TestCase):
+    """``schema.no_value_targets``: a hard denylist of relation-target models
+    whose row values must NEVER be emitted, regardless of ``fk_options`` or
+    ``max_fk_options``. Stronger than the auto-only sensitive-target guard.
+    """
+
+    def _book(self, name):
+        author = User.objects.create(username='u-%s' % name)
+        return Book.objects.create(name=name, author=author)
+
+    def test_control_without_denylist_similar_books_auto_emits(self):
+        # Baseline: similar_books -> Book is small/non-sensitive, so auto mode
+        # normally surfaces related_values. The denylist tests below suppress
+        # it.
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertIn('related_values', similar)
+
+    def test_model_class_target_suppresses_related_values(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class Schema(DjangoQLSchema):
+            no_value_targets = (Book,)
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
+    def test_dotted_label_target_suppresses_related_values(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class Schema(DjangoQLSchema):
+            no_value_targets = ('core.Book',)
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
+    def test_denylist_overrides_explicit_fk_options_true(self):
+        # fk_options=True normally forces emission and overrides even the
+        # sensitive-target guard; no_value_targets must still win.
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class Schema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': True}}
+            no_value_targets = (Book,)
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('related_values', similar)
+
+    def test_bad_label_is_ignored_not_fatal(self):
+        # A misspelled/absent label must not break schema description.
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class Schema(DjangoQLSchema):
+            no_value_targets = ('core.NoSuchModel',)
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        # unknown target -> no suppression, auto emission intact
+        self.assertIn('related_values', similar)

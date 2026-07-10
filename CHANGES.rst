@@ -1,3 +1,17 @@
+0.30.3 (2026-07-10)
+-------------------
+
+* **LLM schema privacy — ``no_value_targets``:** new optional schema attribute,
+  a *hard denylist* of relation-target models (model classes and/or
+  ``"app_label.Model"`` dotted labels) whose row values are **never** embedded
+  into the description. It is checked before ``fk_options`` and ignores
+  ``max_fk_options``, so it overrides even an explicit ``fk_options`` entry and
+  any row-count threshold. Use it to keep institution-specific data
+  (e.g. organisational-unit or institution names) out of a committed or shared
+  schema description, regardless of how few rows a table has. Unknown labels are
+  logged and skipped so a typo can never break schema description. Complements
+  the auto-only ``SENSITIVE_TARGET_APP_LABELS`` / ``AUTH_USER_MODEL`` guard.
+
 0.30.2 (2026-07-05)
 -------------------
 
