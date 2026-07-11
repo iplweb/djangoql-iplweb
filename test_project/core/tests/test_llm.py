@@ -569,6 +569,41 @@ class RelationValuesTest(TestCase):
             set(bundle['dictionaries']['core.book']['name']),
         )
 
+    def test_fk_options_int_bypasses_cap_and_global_threshold(self):
+        # An integer spec is a per-relation limit: it must surface EVERY value
+        # up to that limit, overriding both the MAX_SUGGESTED_VALUES cap (which
+        # True would hit) and the global max_fk_options gate (0 here). 25
+        # distinct names > 20 (MAX_SUGGESTED_VALUES) proves the cap is bypassed.
+        from djangoql.llm import MAX_SUGGESTED_VALUES
+
+        names = {'book-%02d' % i for i in range(MAX_SUGGESTED_VALUES + 5)}
+        for n in names:
+            self._book(n)
+
+        class IntSchema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': 1000}}
+
+        bundle = describe_schema_for_llm(IntSchema(Book), max_fk_options=0)
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertEqual('name', similar['match_field'])
+        self.assertEqual(
+            names, set(bundle['dictionaries']['core.book']['name'])
+        )
+
+    def test_fk_options_int_drops_relation_over_its_own_limit(self):
+        # Cardinality (3 distinct names) exceeds the per-relation limit (2):
+        # nothing is emitted, and the target keeps out of the shared block.
+        for n in ('Dune', 'Solaris', 'It'):
+            self._book(n)
+
+        class IntSchema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': 2}}
+
+        bundle = describe_schema_for_llm(IntSchema(Book), max_fk_options=0)
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
+
 
 class CompactFormatTest(TestCase):
     def _bundle(self):

@@ -432,6 +432,10 @@ def _relation_plan(schema, field, name, max_fk_options):
     Otherwise dispatch on the schema's fk_options entry:
       - False        -> nothing (no query)
       - True         -> force the default field, ignore the threshold
+                        (capped at MAX_SUGGESTED_VALUES)
+      - int N        -> default field's distinct values with a per-relation
+                        limit N -- overrides both the MAX_SUGGESTED_VALUES cap
+                        and ``max_fk_options`` (emit all iff cardinality <= N)
       - 'field'      -> that field's distinct values, gated by threshold
       - ['a', 'b']   -> each field's distinct values, gated by threshold
       - '__str__'    -> str(obj) examples, gated by row count
@@ -458,6 +462,14 @@ def _relation_plan(schema, field, name, max_fk_options):
         if match_field is None:
             return ('str', None, None)
         return ('field', match_field, None)
+    if isinstance(spec, int) and not isinstance(spec, bool):
+        # Per-relation integer limit: bypass both the MAX_SUGGESTED_VALUES cap
+        # (the True path) and the global max_fk_options threshold. Emits every
+        # value iff the relation's cardinality is <= spec, else nothing.
+        match_field = _default_match_field(schema, field.relation)
+        if match_field is None:
+            return ('str', None, spec)
+        return ('field', match_field, spec)
     if isinstance(spec, str) and spec != _STR_KEY:
         return ('field', spec, max_fk_options)
     if isinstance(spec, (list, tuple)):
