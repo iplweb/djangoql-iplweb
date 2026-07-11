@@ -1,0 +1,1260 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Advanced search language for Django, with Django admin integration.">
+      
+      
+      
+        <link rel="canonical" href="https://iplweb.github.io/djangoql-iplweb/derived-fields/">
+      
+      
+        <link rel="prev" href="../llm-schema/">
+      
+      
+        <link rel="next" href="../integrating-django-autocomplete-light/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Derived fields - DjangoQL</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#derived-fields" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DjangoQL" class="md-header__button md-logo" aria-label="DjangoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DjangoQL
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Derived fields
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/iplweb/djangoql-iplweb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DjangoQL" class="md-nav__button md-logo" aria-label="DjangoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DjangoQL
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/iplweb/djangoql-iplweb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Django admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../language/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multiline-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-line queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pretty-print/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pretty-print / formatting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema & custom fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../llm-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Describe schema for an LLM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Derived fields
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Derived fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enabling-derived-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling derived fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#date-and-time-parts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Date and time parts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Date and time parts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-parts-are-generated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which parts are generated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integer-part-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integer part examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#date-and-time-extract-fields-datetimefield-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Date and time extract fields (DateTimeField only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relation-aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relation aggregates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Relation aggregates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#which-relations-and-fields-are-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which relations and fields are included
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-aggregates-are-computed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How aggregates are computed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-set-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Empty-set semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-suggested-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The suggested flag
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The suggested flag">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-hiding-a-noisy-field-from-autocomplete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: hiding a noisy field from autocomplete
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrating-django-autocomplete-light/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    django-autocomplete-light
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../empty-result-breakdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Empty-result breakdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query-breakdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Query breakdown (counts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../queryset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outside the admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../syntax-highlighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax highlighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../completion-widget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Completion widget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../i18n/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internationalization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="derived-fields">Derived fields<a class="headerlink" href="#derived-fields" title="Permanent link">&para;</a></h1>
+<p>Derived fields are virtual search fields that DjangoQL adds automatically on top of the
+fields your model already has. They let you write natural queries like
+<code>written__year &gt;= 2020</code> or <code>book__count &gt; 5</code> without any per-admin boilerplate.</p>
+<p>There are two families:</p>
+<ul>
+<li><strong>Date/time parts</strong> — integer components extracted from a <code>DateField</code>, <code>DateTimeField</code>,
+  or <code>TimeField</code> (year, month, day, hour, …), plus <code>__date</code> and <code>__time</code> extractors for
+  <code>DateTimeField</code>.</li>
+<li><strong>Relation aggregates</strong> — <code>&lt;rel&gt;__count</code> for every to-many relation, plus
+  dot-addressed <code>&lt;rel&gt;.&lt;numfield&gt;__{sum,avg,min,max}</code> numeric aggregates.</li>
+</ul>
+<p>Both families are <strong>opt-in</strong>. The default <code>DjangoQLSchema</code> is unchanged; you enable them
+by switching to <code>ExtrasSchema</code> or by composing the individual mixins into your own schema.</p>
+<div class="admonition note">
+<p class="admonition-title">Derived fields are hidden from autocomplete</p>
+<p>To keep the completion drop-down and the "Unknown field" error readable, all
+derived fields are <strong>hidden from autocomplete</strong> (<code>suggested=False</code>) — there can be
+a great many of them. They remain fully usable in queries; you just type them
+yourself. When you reference a field that doesn't exist, the error message lists
+the normal fields and adds a short hint describing the derived-field syntax with
+a couple of real examples for that model.</p>
+</div>
+<h2 id="enabling-derived-fields">Enabling derived fields<a class="headerlink" href="#enabling-derived-fields" title="Permanent link">&para;</a></h2>
+<p>The quickest way is to use the pre-built <code>ExtrasSchema</code>, which enables both families at
+once:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.extras</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtrasSchema</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.admin</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSearchMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">admin</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Book</span>
+
+
+<span class="nd">@admin</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Book</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BookAdmin</span><span class="p">(</span><span class="n">DjangoQLSearchMixin</span><span class="p">,</span> <span class="n">admin</span><span class="o">.</span><span class="n">ModelAdmin</span><span class="p">):</span>
+    <span class="n">djangoql_schema</span> <span class="o">=</span> <span class="n">ExtrasSchema</span>
+</code></pre></div>
+<p><code>ExtrasSchema</code> is defined as:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExtrasSchema</span><span class="p">(</span><span class="n">DatePartsSchemaMixin</span><span class="p">,</span> <span class="n">AggregateSchemaMixin</span><span class="p">,</span> <span class="n">DjangoQLSchema</span><span class="p">):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>You can also compose the mixins selectively into your own schema — for example, if you
+only want date parts but not aggregates:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.extras</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatePartsSchemaMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSchema</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">DatePartsSchemaMixin</span><span class="p">,</span> <span class="n">DjangoQLSchema</span><span class="p">):</span>
+    <span class="k">pass</span>
+</code></pre></div>
+<p>Or only aggregates:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.extras</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateSchemaMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSchema</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MySchema</span><span class="p">(</span><span class="n">AggregateSchemaMixin</span><span class="p">,</span> <span class="n">DjangoQLSchema</span><span class="p">):</span>
+    <span class="k">pass</span>
+</code></pre></div>
+<p>The schema works identically with the queryset API outside the admin:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.extras</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtrasSchema</span>
+
+<span class="n">books</span> <span class="o">=</span> <span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">djangoql</span><span class="p">(</span><span class="s2">&quot;written__year &gt;= 2020&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">ExtrasSchema</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="date-and-time-parts">Date and time parts<a class="headerlink" href="#date-and-time-parts" title="Permanent link">&para;</a></h2>
+<p><code>DatePartsSchemaMixin</code> inspects every <code>DateField</code>, <code>DateTimeField</code>, and <code>TimeField</code> on
+the model and generates virtual integer fields for each component that makes sense for
+that type.</p>
+<h3 id="which-parts-are-generated">Which parts are generated<a class="headerlink" href="#which-parts-are-generated" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Django field type</th>
+<th>Generated derived fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DateField</code></td>
+<td><code>__year</code> <code>__month</code> <code>__day</code> <code>__week_day</code> <code>__quarter</code> <code>__week</code> <code>__iso_year</code> <code>__iso_week_day</code></td>
+</tr>
+<tr>
+<td><code>DateTimeField</code></td>
+<td>all date parts above <strong>+</strong> <code>__hour</code> <code>__minute</code> <code>__second</code> <strong>+</strong> <code>__date</code> <strong>+</strong> <code>__time</code></td>
+</tr>
+<tr>
+<td><code>TimeField</code></td>
+<td><code>__hour</code> <code>__minute</code> <code>__second</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>DateTimeField</code> is a subclass of <code>DateField</code> in Django, so the implementation tests for
+<code>DateTimeField</code> first and generates the full combined set.</p>
+<h3 id="integer-part-examples">Integer part examples<a class="headerlink" href="#integer-part-examples" title="Permanent link">&para;</a></h3>
+<p>All part fields are integers and support <code>=</code>, <code>!=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>in</code>, and <code>not in</code>:</p>
+<div class="highlight"><pre><span></span><code>written__year &gt;= 2020
+written__month in (6, 7, 8)
+written__day = 1
+written__quarter = 4
+written__week &lt;= 26
+written__hour &lt; 9
+written__minute = 0
+written__second &lt; 30
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title"><code>week_day</code> vs <code>iso_week_day</code></p>
+<p>Django's <code>week_day</code> lookup returns <strong>1 = Sunday … 7 = Saturday</strong> (SQL convention).
+<code>iso_week_day</code> returns <strong>1 = Monday … 7 = Sunday</strong> (ISO 8601). Use whichever
+matches your expected numbering:</p>
+<div class="highlight"><pre><span></span><code>written__iso_week_day in (1, 2, 3, 4, 5)   # Monday–Friday
+written__week_day not in (1, 7)              # not Sunday or Saturday
+</code></pre></div>
+</div>
+<h3 id="date-and-time-extract-fields-datetimefield-only">Date and time extract fields (DateTimeField only)<a class="headerlink" href="#date-and-time-extract-fields-datetimefield-only" title="Permanent link">&para;</a></h3>
+<p>For <code>DateTimeField</code> columns, two additional extractor fields are generated:</p>
+<ul>
+<li><code>__date</code> — compare to a date string <code>"YYYY-MM-DD"</code>.</li>
+<li><code>__time</code> — compare to a time string <code>"HH:MM"</code> or <code>"HH:MM:SS"</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>written__date = &quot;2020-01-01&quot;
+written__date &gt;= &quot;2024-06-01&quot;
+written__time &gt;= &quot;09:00&quot;
+written__time &lt; &quot;17:30:00&quot;
+</code></pre></div>
+<p>These use the same value-type validation as <code>DateField</code> and <code>DateTimeField</code>; an invalid
+string raises a <code>DjangoQLSchemaError</code> with a human-readable message.</p>
+<h2 id="relation-aggregates">Relation aggregates<a class="headerlink" href="#relation-aggregates" title="Permanent link">&para;</a></h2>
+<p><code>AggregateSchemaMixin</code> adds virtual aggregate fields for every <strong>to-many relation</strong> on
+the model: reverse foreign keys (one-to-many) and <code>ManyToManyField</code> (both directions).</p>
+<h3 id="naming">Naming<a class="headerlink" href="#naming" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aggregate</th>
+<th>Field name</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Count</td>
+<td><code>&lt;rel&gt;__count</code></td>
+<td>number of related rows</td>
+</tr>
+<tr>
+<td>Sum</td>
+<td><code>&lt;rel&gt;.&lt;numfield&gt;__sum</code></td>
+<td>sum of a numeric field across related rows</td>
+</tr>
+<tr>
+<td>Average</td>
+<td><code>&lt;rel&gt;.&lt;numfield&gt;__avg</code></td>
+<td>average</td>
+</tr>
+<tr>
+<td>Minimum</td>
+<td><code>&lt;rel&gt;.&lt;numfield&gt;__min</code></td>
+<td>minimum value</td>
+</tr>
+<tr>
+<td>Maximum</td>
+<td><code>&lt;rel&gt;.&lt;numfield&gt;__max</code></td>
+<td>maximum value</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;rel&gt;</code> is the same relation name that DjangoQL already uses for dot-navigation
+(e.g. <code>book</code>, or the value of <code>related_name</code>). <code>&lt;numfield&gt;</code> is the name of an
+<code>IntegerField</code>, <code>FloatField</code>, or <code>DecimalField</code> on the related model.</p>
+<div class="admonition note">
+<p class="admonition-title">Count is flat, numeric aggregates use a dot</p>
+<p>Relation <strong>count</strong> keeps the flat name <code>&lt;rel&gt;__count</code>. The <strong>numeric</strong> aggregates
+are addressed through the relation with a dot — <code>&lt;rel&gt;.&lt;numfield&gt;__sum</code> — which
+reads consistently with the rest of DjangoQL's dot navigation and keeps the
+field list from exploding. The old flat numeric form
+(<code>&lt;rel&gt;__&lt;numfield&gt;__sum</code>) is <strong>no longer accepted</strong>.</p>
+</div>
+<h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code># Count-based (flat)
+book__count &gt; 5
+book__count = 0
+
+# Numeric aggregates on Book&#39;s price and rating fields (dot syntax)
+book.price__avg &gt; 30
+book.price__sum &gt;= 100
+book.rating__min &gt; 3
+book.rating__max = 5
+
+# Through a relation hop — author with more than one book
+author.book__count &gt; 1
+
+# Numeric aggregate two hops out — sum of ratings of this book&#39;s author&#39;s books
+author.book.rating__sum &gt;= 10
+</code></pre></div>
+<h3 id="which-relations-and-fields-are-included">Which relations and fields are included<a class="headerlink" href="#which-relations-and-fields-are-included" title="Permanent link">&para;</a></h3>
+<p><strong>Relations:</strong> All to-many — reverse foreign keys (one-to-many) and <code>ManyToManyField</code>
+in both directions. Forward foreign keys (always 0 or 1 related object) are excluded.
+Relations whose reverse accessor is hidden (<code>related_name='+'</code>) are also skipped,
+because a correlated subquery needs a usable reverse lookup.</p>
+<p><strong>Numeric fields for sum/avg/min/max:</strong> <code>IntegerField</code>, <code>FloatField</code>, and <code>DecimalField</code>
+on the related model, excluding primary keys, foreign-key id columns, and
+non-editable internal columns. Summing primary keys or FK ids is almost never
+meaningful, so they are omitted.</p>
+<p>Count does not target a specific field and is generated for every eligible relation.</p>
+<h3 id="how-aggregates-are-computed">How aggregates are computed<a class="headerlink" href="#how-aggregates-are-computed" title="Permanent link">&para;</a></h3>
+<p>Aggregates are implemented as <strong>correlated subqueries</strong> (<code>Subquery</code> + <code>OuterRef</code>), not
+as <code>JOIN</code>-based annotations. This means:</p>
+<ul>
+<li>Multiple aggregates in a single query remain independent and produce correct results.
+  A JOIN-based approach would multiply rows when several to-many relations are joined
+  at once, inflating counts.</li>
+<li>Only the aggregates that actually appear in a query are added as subqueries
+  (lazy — no annotation overhead for unused fields).</li>
+<li>Subqueries correlate on indexed foreign-key columns, which Django indexes by default.</li>
+<li>Both the Django admin and the queryset API use the same <code>apply_search</code> code path, so
+  both surfaces behave identically.</li>
+</ul>
+<h3 id="empty-set-semantics">Empty-set semantics<a class="headerlink" href="#empty-set-semantics" title="Permanent link">&para;</a></h3>
+<p><code>&lt;rel&gt;__count</code> uses <code>Coalesce(subquery, 0)</code>, so rows with no related objects compare
+correctly:</p>
+<div class="highlight"><pre><span></span><code>book__count = 0    # matches authors who have written no books
+book__count &gt;= 1   # matches authors who have written at least one book
+</code></pre></div>
+<p><code>sum</code>, <code>avg</code>, <code>min</code>, and <code>max</code> return SQL <code>NULL</code> for an empty related set (standard
+aggregate behavior). <code>NULL</code> is excluded from <code>&gt;</code> / <code>&lt;</code> / <code>=</code> comparisons, which is
+consistent with how Django handles nullable fields.</p>
+<div class="admonition note">
+<p class="admonition-title">Numeric aggregate precision</p>
+<p>All numeric aggregate fields use a float output type in this version. For a
+<code>DecimalField</code> source, very large <code>sum</code> values may lose sub-unit precision. If
+exact decimal arithmetic is required, consider using a raw queryset annotation
+instead.</p>
+</div>
+<h2 id="the-suggested-flag">The <code>suggested</code> flag<a class="headerlink" href="#the-suggested-flag" title="Permanent link">&para;</a></h2>
+<p>Every <code>DjangoQLField</code> has a <code>suggested</code> attribute (default <code>True</code>) that controls
+whether the field appears in the autocomplete / introspection JSON sent to the
+completion widget. Setting <code>suggested=False</code> hides the field from autocomplete while
+keeping it fully usable in queries.</p>
+<p>This is different from <code>suggest_options</code> (which controls whether the widget suggests
+<strong>values</strong> for a field, not whether the field itself is listed).</p>
+<p>All derived fields (relation count, date/time parts) ship with <code>suggested=False</code>, and
+numeric aggregates are never listed at all because they are synthesized on demand. So
+by default none of them appear in the completion widget. The example below applies the
+same flag to one of your own fields.</p>
+<h3 id="example-hiding-a-noisy-field-from-autocomplete">Example: hiding a noisy field from autocomplete<a class="headerlink" href="#example-hiding-a-noisy-field-from-autocomplete" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.extras</span><span class="w"> </span><span class="kn">import</span> <span class="n">AggregateSchemaMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSchema</span><span class="p">,</span> <span class="n">IntField</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BookSchema</span><span class="p">(</span><span class="n">AggregateSchemaMixin</span><span class="p">,</span> <span class="n">DjangoQLSchema</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_fields</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="c1"># Derived fields are hidden by default; re-show one you use a lot so it</span>
+        <span class="c1"># appears in autocomplete again.</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;review__count&#39;</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">suggested</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">fields</span>
+</code></pre></div>
+<p>You can also pass <code>suggested=False</code> when constructing a field instance:</p>
+<div class="highlight"><pre><span></span><code><span class="n">IntField</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;internal_score&#39;</span><span class="p">,</span> <span class="n">suggested</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<p>The serializer (<code>DjangoQLSchemaSerializer</code>) skips any field where <code>suggested</code> is
+<code>False</code>, so it never appears in the widget's drop-down list. Standard model fields
+default to <code>True</code> and remain visible; generated derived fields default to <code>False</code> and
+stay hidden (but fully queryable).</p>
+<h2 id="recipes">Recipes<a class="headerlink" href="#recipes" title="Permanent link">&para;</a></h2>
+<p><strong>Authors with no published books:</strong></p>
+<div class="highlight"><pre><span></span><code>book__count = 0
+</code></pre></div>
+<p><strong>Books written in summer (June, July, August):</strong></p>
+<div class="highlight"><pre><span></span><code>written__month in (6, 7, 8)
+</code></pre></div>
+<p><strong>Books written on a weekday (ISO: Monday–Friday):</strong></p>
+<div class="highlight"><pre><span></span><code>written__iso_week_day in (1, 2, 3, 4, 5)
+</code></pre></div>
+<p><strong>Books where the average related-book price exceeds a threshold (via author):</strong></p>
+<div class="highlight"><pre><span></span><code>author.book.price__avg &gt; 30
+</code></pre></div>
+<p><strong>Records created in the first quarter:</strong></p>
+<div class="highlight"><pre><span></span><code>written__quarter = 1
+</code></pre></div>
+<p><strong>Books created on a specific date from a <code>DateTimeField</code>:</strong></p>
+<div class="highlight"><pre><span></span><code>written__date = &quot;2024-01-15&quot;
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

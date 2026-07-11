@@ -1,0 +1,1518 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Advanced search language for Django, with Django admin integration.">
+      
+      
+      
+        <link rel="canonical" href="https://iplweb.github.io/djangoql-iplweb/llm-schema/">
+      
+      
+        <link rel="prev" href="../schema/">
+      
+      
+        <link rel="next" href="../derived-fields/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Describe schema for an LLM - DjangoQL</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#describing-a-schema-for-an-llm" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DjangoQL" class="md-header__button md-logo" aria-label="DjangoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DjangoQL
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Describe schema for an LLM
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/iplweb/djangoql-iplweb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DjangoQL" class="md-nav__button md-logo" aria-label="DjangoQL" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DjangoQL
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/iplweb/djangoql-iplweb" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Django admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../language/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multiline-queries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-line queries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pretty-print/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pretty-print / formatting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema & custom fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Describe schema for an LLM
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Describe schema for an LLM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#library-primitive-describe_schema_for_llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library primitive: describe_schema_for_llm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library primitive: describe_schema_for_llm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#operators-live-in-a-legend-not-on-every-field" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operators live in a legend, not on every field
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-compact-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The compact format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The compact format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resolving-a-fields-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolving a field's operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-labels-and-help-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field labels and help text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choice-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choice fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#derived-fields-date-parts-and-aggregates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Derived fields (date parts and aggregates)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#related-model-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related-model values
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Related-model values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#choosing-what-a-relation-reveals-fk_options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing what a relation reveals: fk_options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output shape
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#management-command-djangoql_describe_schema_for_llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Management command: djangoql_describe_schema_for_llm
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#closing-the-loop-generate-validate-repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Closing the loop: generate → validate → repair
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#field-filtering-also-trims-the-description" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field filtering also trims the description
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../derived-fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Derived fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrating-django-autocomplete-light/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    django-autocomplete-light
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../empty-result-breakdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Empty-result breakdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query-breakdown/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Query breakdown (counts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../queryset/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outside the admin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../syntax-highlighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syntax highlighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../completion-widget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Completion widget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../i18n/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internationalization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="describing-a-schema-for-an-llm">Describing a schema for an LLM<a class="headerlink" href="#describing-a-schema-for-an-llm" title="Permanent link">&para;</a></h1>
+<p>Want a language model to <em>write</em> DjangoQL for your users — turn "books rated
+over 4.5 that are still in stock" into <code>rating &gt; 4.5 and in_stock = True</code>? The
+model needs to know three things: <strong>what</strong> it can query (the fields and the
+relations between them), <strong>how</strong> each field may be compared (the operators legal
+for its type), and the handful of <strong>grammar</strong> rules that aren't obvious.</p>
+<p><code>describe_schema_for_llm()</code> produces exactly that, as a single self-contained
+document, by reusing DjangoQL's own schema introspection — the same walk
+over related models that powers auto-completion. Drop the description into a
+system prompt and the model has everything it needs to generate valid queries.</p>
+<h2 id="library-primitive-describe_schema_for_llm">Library primitive: <code>describe_schema_for_llm</code><a class="headerlink" href="#library-primitive-describe_schema_for_llm" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.llm</span><span class="w"> </span><span class="kn">import</span> <span class="n">describe_schema_for_llm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSchema</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">library.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Book</span>
+
+<span class="n">bundle</span> <span class="o">=</span> <span class="n">describe_schema_for_llm</span><span class="p">(</span><span class="n">DjangoQLSchema</span><span class="p">(</span><span class="n">Book</span><span class="p">))</span>  <span class="c1"># format=&#39;json&#39; by default</span>
+</code></pre></div>
+<p><code>describe_schema_for_llm(schema, format='json', max_fk_options=50)</code> takes a
+schema <strong>instance</strong> and renders it in one of two formats:</p>
+<ul>
+<li><strong><code>format='json'</code></strong> (the default) returns a plain, JSON-serializable
+  <code>dict</code> — a one-time operator legend plus terse per-field entries. This is
+  what you'd typically embed in a system prompt for a tool-calling model.</li>
+<li><strong><code>format='compact'</code></strong> returns a <code>str</code>: the same information as a short
+  text block — one line per field, with the legend written once as a
+  comment header. Use it when every prompt token counts (large schemas, tight
+  context budgets).</li>
+</ul>
+<p>Any other value raises <code>ValueError</code>.</p>
+<h3 id="operators-live-in-a-legend-not-on-every-field">Operators live in a legend, not on every field<a class="headerlink" href="#operators-live-in-a-legend-not-on-every-field" title="Permanent link">&para;</a></h3>
+<p>Older versions of this description repeated each field's operator list (and a
+worked example) inline. That's redundant: every field of a given type allows
+exactly the same operators. The description now says that once, in
+<code>operators_by_type</code>, and each field just states its <code>type</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;start_model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library.book&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;grammar&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;shape&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;field&gt; &lt;operator&gt; &lt;value&gt;, combined with `and` / `or` and grouped with parentheses&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;each field lists its type; look up the allowed operators in operators_by_type by that type. A field with `relates_to` uses the `relation` entry; a field with `object_reference` true uses the `object_reference` entry. A `?` suffix on the type means the field is nullable (comparable to None).&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;relations&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cross model boundaries with a dot: author.country.name = \&quot;Poland\&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;lists&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;membership uses a parenthesized list: x in (\&quot;a\&quot;, \&quot;b\&quot;)&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;null&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a nullable field (type ends with ?) or a relation can equal None&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;strings&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string values are double-quoted; ~ means contains&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;negation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;there is NO standalone `not` operator. Negate with the operator itself: != , !~ , not in , not startswith , not endswith. Example: publisher != None (NOT: not publisher = None)&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;operators_by_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;int&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = 42&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;float&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = 4.5&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = \&quot;2021-06-01\&quot;&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;datetime&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = \&quot;2021-06-01 14:30\&quot;&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;str&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;startswith&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;endswith&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not startswith&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not endswith&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x ~ \&quot;text\&quot;&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;bool&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = True&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;relation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;= None&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!= None&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;relation&gt;.&lt;field&gt; (traverse with a dot)&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;object_reference&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;dictionaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;library.author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Isaac Asimov&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;J.R.R. Tolkien&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Ursula K. Le Guin&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;models&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;library.book&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;int&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;rating&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;published_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;date?&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;genre&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;int?&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;choices&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Science Fiction&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Fantasy&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Non-Fiction&quot;</span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;str&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Book Title&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;help_text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The full title as printed on the cover.&quot;</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;relation&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;relates_to&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library.author&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;match_field&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;name&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;library.author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;examples&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;id = 1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;id &gt; 10 and id &lt; 100&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;id in (1, 2, 3)&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;id = 1 or id = 2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;(id &gt; 1 and id &lt; 5) or id = 10&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>That one example shows every field shape:</p>
+<ul>
+<li><strong><code>id</code> / <code>rating</code></strong> — a field with no extra facts is a <strong>bare string</strong>:
+  <code>"name": "type"</code>. Nothing to add means nothing to spend tokens on.</li>
+<li><strong><code>published_date</code></strong> — a <code>?</code> suffix on the type (<code>"date?"</code>) means the field
+  is <strong>nullable</strong>; it may be compared to <code>None</code>.</li>
+<li><strong><code>genre</code></strong> — as soon as a field has <em>any</em> extra fact (here, <code>choices</code>), it
+  becomes an <strong>object</strong>: <code>{"type": ..., ...extras}</code>. The <code>?</code> suffix still
+  lives on <code>type</code>, so <code>"type": "int?"</code> reads the same way whether the field
+  is a bare string or an object.</li>
+<li><strong><code>title</code></strong> — a metadata object: <code>label</code> / <code>help_text</code> copied from the
+  underlying model field.</li>
+<li><strong><code>author</code></strong> — a relation object: <code>relates_to</code> names the related model, and
+  <code>match_field</code> names <em>which</em> key in that model's <code>dictionaries</code> entry holds
+  its real, matchable values. The values themselves are <strong>not</strong> repeated on the
+  field; they live once under
+  <code>dictionaries["library.author"]["name"]</code> — see
+  <a href="#related-model-values">Related-model values</a>.</li>
+</ul>
+<p>No field, of any shape, ever carries <code>operators</code>, <code>example</code>,
+<code>"nullable": false</code>, a generic explanatory <code>note</code>, or an inline
+<code>related_values</code> list — those are exactly the things the legend, the <code>?</code>
+suffix, and the shared <code>dictionaries</code> block now say once, at the top.</p>
+<h3 id="the-compact-format">The compact format<a class="headerlink" href="#the-compact-format" title="Permanent link">&para;</a></h3>
+<p><code>format='compact'</code> renders the same facts as short text — the legend becomes
+a comment block (written once), and every field becomes one line:</p>
+<div class="highlight"><pre><span></span><code># DjangoQL schema
+# Query: &lt;field&gt; &lt;op&gt; &lt;value&gt;, combined with and/or, grouped with ().
+# Negate with != / !~ / not in / not startswith / not endswith (no standalone `not`).
+# Relations: traverse with a dot (author.name = &quot;...&quot;), or compare None.
+# Operators by type:
+#   int/float/date:  = != &gt; &gt;= &lt; &lt;=  in  not in        e.g. rating = 4.5
+#   datetime:        (as above) plus ~ !~
+#   str:  = != ~ !~ startswith endswith (not ...) in  not in           e.g. name ~ &quot;text&quot;
+#   bool:           = !=                           e.g. is_pub = True
+#   -&gt; relation:     = None / != None / dot-traverse
+#   # object_reference: = != in not in  (match by pk)
+# Suffix ? = nullable.  choices: closed set.
+
+start model: library.book
+
+library.book:
+  author          -&gt; library.author  match name
+  genre           int?  choices: Science Fiction | Fantasy | Non-Fiction
+  id              int
+  published_date  date?
+  rating          float
+  title           str  &quot;Book Title&quot; — The full title as printed on the cover.
+
+library.author:
+  ...
+
+dictionaries (shared relation values, referenced above):
+  library.author
+    name: &quot;Isaac Asimov&quot;, &quot;J.R.R. Tolkien&quot;, &quot;Ursula K. Le Guin&quot;
+</code></pre></div>
+<p>Conventions worth knowing when reading (or grepping) this format:</p>
+<ul>
+<li><strong><code>-&gt;</code></strong> marks a relation; the target model follows (<code>-&gt; library.author</code>).
+  A trailing <code>?</code> on the target (<code>-&gt; library.author?</code>) means the relation
+  itself is nullable.</li>
+<li><strong><code>match &lt;field&gt;</code></strong> after a relation names <em>which</em> key in the target model's
+  <code>dictionaries</code> block holds the values to traverse with (<code>match_fields</code>
+  renders as <code>match field_a, field_b</code>; a <code>'__str__'</code> spec renders as
+  <code>examples</code>, pointing at the <code>examples:</code> key in the dictionary). The values
+  themselves are listed once, at the bottom, under <code>dictionaries</code>.</li>
+<li><strong><code>?</code></strong> right after the type marks a nullable scalar field (<code>date?</code>).</li>
+<li><strong><code>#</code></strong> before the type marks an <code>object_reference</code> picker field (matched by
+  primary key), e.g. <code>author  # str (object_reference)</code>.</li>
+<li><strong><code>choices: a | b | c</code></strong> lists a closed set of values.</li>
+<li>A quoted string after the type is the field's <code>label</code>; an em-dash and more
+  text after it is the <code>help_text</code> (<code>"Book Title" — The full title...</code>).</li>
+<li><strong><code>dictionaries (...)</code></strong>, at the very bottom, is the glossary the <code>match</code>
+  references point into: one block per related model, then one <code>key: values</code>
+  line per match field (or <code>examples:</code> for a <code>'__str__'</code> spec). Each set of
+  values appears here exactly once, no matter how many relations reference it.</li>
+</ul>
+<p>What each part of either format carries:</p>
+<ul>
+<li><strong><code>start_model</code></strong> — the root model the query is rooted at.</li>
+<li><strong><code>grammar</code></strong> — the non-obvious rules, including the <code>operators</code> note that
+  tells the model <em>how</em> to resolve a field's operators (see below).</li>
+<li><strong><code>operators_by_type</code></strong> — emitted once, this is the legend: for every
+  scalar type (<code>int</code>, <code>float</code>, <code>date</code>, <code>datetime</code>, <code>str</code>, <code>bool</code>) and the two
+  pseudo-types <code>relation</code> and <code>object_reference</code>, the operators legal for
+  that type, plus a worked <code>example</code> for scalar types. If the schema uses the
+  date-parts / aggregate mixins, the <code>date</code>, <code>datetime</code> and <code>relation</code> entries
+  also gain a <code>lookups</code> / <code>aggregates</code> note — see
+  <a href="#derived-fields-date-parts-and-aggregates">Derived fields</a> below.</li>
+<li><strong><code>models</code></strong> — every model reachable from the root, keyed by label. This is
+  the field <em>graph</em>: a field with <code>relates_to</code> names the model it relates
+  to, so the LLM can traverse <code>author.country.name</code> the same way
+  introspection does. Only fields that are actually suggested in
+  auto-completion are included, so the description matches what a user sees.</li>
+<li><strong><code>suggested_values</code></strong> — for open-ended picker/autocomplete fields without
+  <code>choices</code>, a sample of real values, so the model can pick valid ones rather
+  than guess. Fields with <code>choices</code> never also carry <code>suggested_values</code> (choices
+  take precedence).</li>
+<li><strong><code>label</code></strong> / <strong><code>help_text</code></strong> — human-readable metadata copied from the
+  underlying model field, when it adds information beyond the field name.</li>
+<li><strong><code>choices</code></strong> — for a field defined with <code>choices=</code>, the closed set of labels
+  DjangoQL accepts.</li>
+<li><strong><code>dictionaries</code></strong> — a top-level map <code>{ related_model_label: { match_key:
+  [values] } }</code>. Each related model's matchable values live here <strong>once</strong>,
+  keyed by the field they came from (or <code>"__str__"</code> for <code>str(obj)</code> examples),
+  no matter how many relations point at that model. This is the single source
+  of truth a relation's <code>match_field</code> / <code>match_fields</code> refers into.</li>
+<li><strong><code>match_field</code></strong> (or <strong><code>match_fields</code></strong>) — on a relation, names which key(s)
+  in <code>dictionaries[relates_to]</code> hold the values to match on. The values are
+  never inlined on the field itself; look them up in <code>dictionaries</code>. A
+  <code>match_field</code> of <code>"__str__"</code> means <code>str(obj)</code> examples.</li>
+<li><strong><code>examples</code></strong> — a few worked, schema-agnostic queries.</li>
+</ul>
+<h4 id="resolving-a-fields-operators">Resolving a field's operators<a class="headerlink" href="#resolving-a-fields-operators" title="Permanent link">&para;</a></h4>
+<p>Given a field entry, the lookup a model (or your own code) performs is:</p>
+<ol>
+<li>Take the field's <code>type</code> and strip a trailing <code>?</code> if present.</li>
+<li>If the entry has <code>relates_to</code>, use the <code>relation</code> entry in
+   <code>operators_by_type</code> instead of the (stripped) <code>type</code>.</li>
+<li>Else if the entry has <code>object_reference: true</code>, use the
+   <code>object_reference</code> entry instead.</li>
+<li>Otherwise look the (stripped) type straight up in <code>operators_by_type</code>.</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Pass the schema <em>you</em> expose</p>
+<p><code>describe_schema_for_llm()</code> takes a schema <strong>instance</strong>, so pass the exact
+<code>DjangoQLSchema</code> subclass your admin or view uses (e.g. one that restricts
+fields via <code>get_fields()</code> or adds
+<a href="../integrating-django-autocomplete-light/">autocomplete pickers</a>). The
+description then covers precisely the search space your users have — no more,
+no less. Object-picker fields keep their original type (e.g. <code>str</code>) but
+carry <code>"object_reference": true</code>, which routes their operator lookup to
+the <code>object_reference</code> legend entry (<code>= / != / in / not in</code>) instead of
+the string one.</p>
+</div>
+<h3 id="field-labels-and-help-text">Field labels and help text<a class="headerlink" href="#field-labels-and-help-text" title="Permanent link">&para;</a></h3>
+<p>Model fields often carry human-readable metadata that the field <em>name</em> alone
+doesn't convey — a <code>verbose_name</code> like "Book Title", or a <code>help_text</code>
+explaining what the field means. <code>describe_schema_for_llm()</code> copies both onto
+the field entry whenever they add information:</p>
+<ul>
+<li><strong><code>label</code></strong> comes from the field's <code>verbose_name</code>. It is omitted when it
+  would only restate the field name (e.g. a field called <code>title</code> whose
+  auto-generated verbose name is <code>"title"</code>) — no point spending prompt tokens
+  on a label that says nothing the field name doesn't already say.</li>
+<li><strong><code>help_text</code></strong> is copied verbatim whenever the underlying field defines
+  one.</li>
+</ul>
+<p>Both are hints, not machine-readable constraints: they help the model guess
+what a field is <em>for</em> before it ever sees a row of data. A field with either
+key becomes an object, e.g. <code>"title": {"type": "str", "label": "Book Title",
+"help_text": "The full title as printed on the cover."}</code>.</p>
+<h3 id="choice-fields">Choice fields<a class="headerlink" href="#choice-fields" title="Permanent link">&para;</a></h3>
+<p>A field defined with Django's <code>choices=</code> is a closed set — there's no
+guessing a valid value, only the list. <code>describe_schema_for_llm()</code> always
+emits that list as <code>choices</code> (capped at 100 entries), using the
+human-readable label side of each <code>(value, label)</code> pair — the same label
+DjangoQL's own value matching accepts and translates back to the stored
+value: <code>"genre": {"type": "int?", "choices": ["Science Fiction", "Fantasy",
+"Non-Fiction"]}</code>. Because choices live on the field definition, this costs no
+database query and needs no opt-in.</p>
+<h3 id="derived-fields-date-parts-and-aggregates">Derived fields (date parts and aggregates)<a class="headerlink" href="#derived-fields-date-parts-and-aggregates" title="Permanent link">&para;</a></h3>
+<p>Two optional schema mixins (<code>djangoql.extras.DatePartsSchemaMixin</code> and
+<code>djangoql.extras.AggregateSchemaMixin</code>) each generate a whole family of extra
+queryable fields per field they attach to:</p>
+<ul>
+<li><strong>Date parts</strong> — every <code>date</code> field gains up to eight virtual lookups:
+  <code>&lt;field&gt;__year</code>, <code>__month</code>, <code>__day</code>, <code>__week_day</code>, <code>__quarter</code>, <code>__week</code>,
+  <code>__iso_year</code>, <code>__iso_week_day</code>. Every <code>datetime</code> field gains those same
+  eight plus <code>__hour</code>, <code>__minute</code>, <code>__second</code>, <code>__date</code>, and <code>__time</code> — up to
+  thirteen virtual fields from one real one.</li>
+<li><strong>Aggregates</strong> — every to-many relation (reverse FK or M2M) gains a
+  <code>&lt;relation&gt;__count</code> field. Numeric aggregates
+  (<code>&lt;relation&gt;.&lt;numeric_field&gt;__sum|avg|min|max</code>) are <em>not</em> separate fields at
+  all — they're synthesized on the fly from the dot-syntax pattern when the
+  parser encounters them, so only <code>&lt;relation&gt;__count</code> ever exists as a real
+  field object.</li>
+</ul>
+<p>Listing all of that per field would dominate the description — one
+<code>datetime</code> field alone could add thirteen entries. So none of it is listed
+individually: every generated field (<code>DatePartField</code>, <code>DateExtractField</code>,
+<code>TimeExtractField</code>, <code>AggregateField</code> and its subclasses) is created with
+<code>suggested=False</code>, and <code>describe_schema_for_llm()</code> excludes them from
+<code>models</code> by class as well, so even a schema that forces one back to
+<code>suggested=True</code> still won't see it listed.</p>
+<p>Instead, <code>describe_schema_for_llm()</code> scans the <em>whole</em> schema once —
+including those hidden fields — and, only for the capabilities it actually
+finds, adds a <code>lookups</code> note to the <code>date</code>/<code>datetime</code> legend entries and an
+<code>aggregates</code> note to the <code>relation</code> entry. One note each, no matter how many
+date/datetime fields or to-many relations the schema has:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = \&quot;2021-06-01\&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lookups&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;also &lt;field&gt;__&lt;part&gt; (integer): year, month, day, week_day, quarter, week, iso_year, iso_week_day. e.g. utworzono__year = 2021&quot;</span>
+<span class="p">},</span>
+<span class="nt">&quot;datetime&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!~&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;in&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;not in&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;example&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;x = \&quot;2021-06-01 14:30\&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lookups&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;also &lt;field&gt;__&lt;part&gt; (integer): year, month, day, week_day, quarter, week, iso_year, iso_week_day, hour, minute, second; &lt;field&gt;__date (date); &lt;field&gt;__time (time). e.g. utworzono__year = 2021, utworzono__date = \&quot;2021-06-01\&quot;&quot;</span>
+<span class="p">},</span>
+<span class="nt">&quot;relation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;operators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;= None&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;!= None&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;&lt;relation&gt;.&lt;field&gt; (traverse with a dot)&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;aggregates&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;to-many relation: &lt;rel&gt;__count (integer), e.g. autorzy__count &gt;= 2. Numeric aggregates via dot: &lt;rel&gt;.&lt;numeric_field&gt;__sum|avg|min|max, e.g. autorzy.rating__avg&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>(<code>utworzono__year</code> and <code>autorzy__count</code> are fixed, generic worked examples
+baked into the note text itself — not references to fields in <em>your</em>
+schema — the same way the scalar legend entries' <code>example</code> is generic.)</p>
+<p>From that legend alone, the model can build <code>published_date__year = 2021</code>
+against any <code>date</code> field, <code>written__date = "2021-06-01"</code> against any
+<code>datetime</code> field, or <code>books__count &gt;= 2</code> / <code>books.rating__avg &gt; 4</code> against
+any to-many relation — none of which ever appears under <code>models</code> by name.</p>
+<p>The compact format adds the same information as up to three extra header
+lines, right after the fixed legend block and before <code>start model:</code>:</p>
+<div class="highlight"><pre><span></span><code># date fields also: &lt;field&gt;__&lt;part&gt; (int): year, month, day, week_day, quarter, week, iso_year, iso_week_day
+# datetime fields also: &lt;field&gt;__&lt;part&gt;: hour, minute, second; &lt;field&gt;__date; &lt;field&gt;__time
+# to-many relations: &lt;rel&gt;__count; numeric via dot &lt;rel&gt;.&lt;field&gt;__sum|avg|min|max
+</code></pre></div>
+<p>A schema using only <code>DatePartsSchemaMixin</code> gets the <code>date</code>/<code>datetime</code> <code>lookups</code>
+notes but no relation <code>aggregates</code> note (and no <code># to-many relations</code> line in
+compact); a schema using only <code>AggregateSchemaMixin</code> gets the reverse. The <code>date
+fields also</code> and <code>datetime fields also</code> compact lines appear together whenever
+any date or datetime field is present — a schema with only a bare <code>TimeField</code>
+is the only case that yields the datetime-only line alone. <strong>A schema that uses neither mixin gets none of this</strong> — no
+<code>lookups</code> key on <code>date</code>/<code>datetime</code>, no <code>aggregates</code> key on <code>relation</code>, and no
+extra compact header lines. Confirm it yourself on a plain schema:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--indent<span class="w"> </span><span class="m">2</span>
+</code></pre></div>
+<p>The <code>date</code>/<code>datetime</code>/<code>relation</code> legend entries come back with only
+<code>operators</code> (and <code>example</code>) — and <code>models</code> has no <code>__year</code>-, <code>__date</code>- or
+<code>__count</code>-suffixed entries anywhere, because the mixins were never attached
+to that schema in the first place.</p>
+<h3 id="related-model-values">Related-model values<a class="headerlink" href="#related-model-values" title="Permanent link">&para;</a></h3>
+<p>Knowing that <code>author</code> is a <code>library.author</code> isn't enough for a model to write
+<code>author.name = "J.R.R. Tolkien"</code> — it also has to know what a real <code>name</code>
+looks like. <code>describe_schema_for_llm()</code> embeds real, matchable values for a
+relation in the shared top-level <code>dictionaries</code> block and points the relation
+at them with <code>match_field</code>, controlled by <code>max_fk_options</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.llm</span><span class="w"> </span><span class="kn">import</span> <span class="n">describe_schema_for_llm</span>
+
+<span class="n">bundle</span> <span class="o">=</span> <span class="n">describe_schema_for_llm</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">max_fk_options</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>  <span class="c1"># the default</span>
+</code></pre></div>
+<p>or from the command line:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span>--max-fk-options<span class="w"> </span><span class="m">50</span>
+</code></pre></div>
+<p><code>max_fk_options</code> is a cardinality gate, not a sample size: a relation's
+values are only embedded when the number of <em>distinct</em> values is at or under
+the threshold, so the model sees the whole domain rather than an arbitrary
+slice. <code>0</code> disables auto mode and any <code>'field_name'</code>/<code>['a','b']</code>/<code>'__str__'</code> spec (all are gated by this threshold); only <code>True</code> (which ignores the threshold) and <code>False</code> (always off) are unaffected by <code>max_fk_options</code>. Disabled relations fall back to a bare relation object — <code>relates_to</code> with no <code>match_field</code>/<code>match_fields</code> and no entry in <code>dictionaries</code> — traversable with a dot or comparable to <code>None</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Values are deduplicated across relations</p>
+<p>A single related model (a dictionary/lookup table) is often the target of
+<em>many</em> foreign keys — several <code>jezyk</code> FKs, a self-relation plus reverse
+relations, and so on. Rather than repeat that model's value list at every
+such relation, <code>describe_schema_for_llm()</code> emits it <strong>once</strong>, in the
+top-level <code>dictionaries</code> block keyed by <code>(related_model, match_field)</code>, and
+every relation to it carries only a lightweight <code>match_field</code> reference.
+Two relations pointing at the same model but matching on <em>different</em> fields
+produce two separate <code>dictionaries</code> entries (one per field), each still
+emitted once.</p>
+</div>
+<h4 id="choosing-what-a-relation-reveals-fk_options">Choosing what a relation reveals: <code>fk_options</code><a class="headerlink" href="#choosing-what-a-relation-reveals-fk_options" title="Permanent link">&para;</a></h4>
+<p>Without any configuration (<strong>auto mode</strong>, below), <code>describe_schema_for_llm()</code>
+guesses one identifying field per relation. To be explicit — reveal several
+fields, a computed string, or nothing at all — set <code>fk_options</code> on the
+schema:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BookSchema</span><span class="p">(</span><span class="n">DjangoQLSchema</span><span class="p">):</span>
+    <span class="n">fk_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">Book</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;country&#39;</span><span class="p">],</span>  <span class="c1"># several fields</span>
+            <span class="s1">&#39;publisher&#39;</span><span class="p">:</span> <span class="s1">&#39;__str__&#39;</span><span class="p">,</span>         <span class="c1"># fall back to str(obj)</span>
+            <span class="s1">&#39;editor&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>                <span class="c1"># never reveal editor values</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+</code></pre></div>
+<p><code>fk_options</code> is keyed by the <strong>model that owns the relation</strong> (here <code>Book</code>,
+which has the <code>author</code>, <code>publisher</code> and <code>editor</code> foreign keys), then by the
+<strong>relation's field name</strong> on that model. Each entry's value — the <em>spec</em> —
+controls what gets embedded for that relation:</p>
+<table>
+<thead>
+<tr>
+<th>Spec</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>'field_name'</code></td>
+<td>Emit that field's distinct values, gated by <code>max_fk_options</code>. Produces <code>match_field</code> on the relation; values under <code>dictionaries[relates_to][field_name]</code>.</td>
+</tr>
+<tr>
+<td><code>['field_a', 'field_b']</code></td>
+<td>Emit each field's distinct values, gated by <code>max_fk_options</code>. Produces <code>match_fields</code> on the relation; each field's values under <code>dictionaries[relates_to][field]</code>.</td>
+</tr>
+<tr>
+<td><code>'__str__'</code></td>
+<td>Emit up to <code>max_fk_options</code> rows' <code>str(obj)</code>, gated by row count rather than distinct-value count. Produces <code>match_field: "__str__"</code>; values under <code>dictionaries[relates_to]["__str__"]</code>.</td>
+</tr>
+<tr>
+<td><code>True</code></td>
+<td>Force the relation's default identifying field (see auto mode), ignoring the <code>max_fk_options</code> threshold. Falls back to <code>'__str__'</code>-style examples if the related model has no string field.</td>
+</tr>
+<tr>
+<td><code>False</code></td>
+<td>Never reveal values for this relation, regardless of <code>max_fk_options</code>.</td>
+</tr>
+<tr>
+<td><em>(no entry)</em></td>
+<td><strong>Auto mode</strong> — see below.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="auto-mode">Auto mode<a class="headerlink" href="#auto-mode" title="Permanent link">&para;</a></h4>
+<p>A relation with no <code>fk_options</code> entry at all is handled automatically: its
+identifying field is picked from the related model's <em>schema-visible</em>
+fields — so it only ever surfaces a field a user could already search on — a
+field literally named <code>name</code> if there is one, otherwise the first string
+field. If that field's distinct-value count is at or under
+<code>max_fk_options</code>, its values are embedded exactly as with an explicit
+<code>'field_name'</code> spec. If the related model exposes no string field, or its
+value count exceeds the threshold, auto mode emits nothing for that
+relation.</p>
+<p>Auto mode also skips any relation whose target model belongs to one of
+Django's own sensitive apps — <code>auth</code>, <code>admin</code>, <code>contenttypes</code>, <code>sessions</code> —
+as well as the project's configured <code>AUTH_USER_MODEL</code>, even when a custom
+user model lives in an otherwise non-sensitive app (e.g. <code>myapp.User</code>). This
+way schema description never auto-dumps usernames, permission codenames, or
+session data into a prompt. An explicit <code>fk_options</code> entry for such a
+relation overrides the exclusion; the skip only applies to auto mode.</p>
+<div class="admonition warning">
+<p class="admonition-title">Privacy: auto mode queries your data</p>
+<p>Every other value in the schema description is either static (field
+names, types, choices) or opt-in (<code>suggested_values</code> requires
+<code>suggest_options</code> on the field). Auto-mode related values are the one
+exception: by default, any relation under the <code>max_fk_options</code> threshold
+has its distinct values queried and embedded, with no explicit opt-in
+beyond calling <code>describe_schema_for_llm()</code> at all. If a relation's
+target holds data you don't want surfaced this way — anything not
+already meant to be user-searchable — disable it explicitly with
+<code>fk_options = {Model: {relation: False}}</code>, or disable auto mode globally
+with <code>max_fk_options=0</code>.</p>
+</div>
+<h4 id="output-shape">Output shape<a class="headerlink" href="#output-shape" title="Permanent link">&para;</a></h4>
+<p>The values always live in the top-level <code>dictionaries</code> block, keyed by
+<code>(related_model, match_key)</code>; the relation entry itself carries only a
+reference, alongside <code>type</code> and <code>relates_to</code>:</p>
+<ul>
+<li><strong><code>match_field: "field_name"</code></strong> — a single field (<code>'field_name'</code> spec, auto
+  mode, or <code>True</code>). Its distinct values are the list at
+  <code>dictionaries[relates_to]["field_name"]</code>.</li>
+<li><strong><code>match_fields: ["field_a", "field_b"]</code></strong> — several fields (<code>['a', 'b']</code>
+  spec). Each field's distinct values are the list at
+  <code>dictionaries[relates_to][field]</code>.</li>
+<li><strong><code>match_field: "__str__"</code></strong> — <code>str(obj)</code> rows, when there's no single field
+  to match on (<code>'__str__'</code> spec, or as <code>True</code>'s fallback when the related model
+  has no string field). The examples are the list at
+  <code>dictionaries[relates_to]["__str__"]</code>.</li>
+</ul>
+<p>To resolve a relation's values, take its <code>match_field</code> (or each of its
+<code>match_fields</code>) and look it up in <code>dictionaries[relates_to]</code>. A <code>match_key</code> of
+<code>"__str__"</code> is <code>str(obj)</code> examples, not a traversable field.</p>
+<p>When no values apply (disabled, over threshold, or a sensitive target in auto
+mode), the relation entry has no <code>match_field</code>/<code>match_fields</code> at all — just
+<code>type</code> and <code>relates_to</code>, and no entry in <code>dictionaries</code> — and the model falls
+back to the <code>relation</code> note in <code>grammar.operators</code>: traverse with a dot, or
+compare to <code>None</code>.</p>
+<h2 id="management-command-djangoql_describe_schema_for_llm">Management command: <code>djangoql_describe_schema_for_llm</code><a class="headerlink" href="#management-command-djangoql_describe_schema_for_llm" title="Permanent link">&para;</a></h2>
+<p>The same description is available from the command line for any model — handy
+for building prompts, fixtures, or eval sets:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Default schema (all introspectable fields), JSON output</span>
+$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book
+
+<span class="c1"># The exact schema your admin/view exposes</span>
+$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--schema<span class="w"> </span>library.schema.BookSchema
+
+<span class="c1"># Compact text output, smallest for large schemas</span>
+$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>compact
+
+<span class="c1"># JSON, redirected to a file</span>
+$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--indent<span class="w"> </span><span class="m">0</span><span class="w"> </span>&gt;<span class="w"> </span>book_schema.json
+
+<span class="c1"># Lower the related-values threshold, or disable auto mode with 0</span>
+$<span class="w"> </span>python<span class="w"> </span>manage.py<span class="w"> </span>djangoql_describe_schema_for_llm<span class="w"> </span>library.Book<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max-fk-options<span class="w"> </span><span class="m">10</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app_label.ModelName</code></td>
+<td>The model to describe (required).</td>
+</tr>
+<tr>
+<td><code>--schema</code></td>
+<td>Dotted path to a <code>DjangoQLSchema</code> subclass to use instead of the default.</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td>Output format: <code>json</code> (default, machine-readable dict) or <code>compact</code> (terse text).</td>
+</tr>
+<tr>
+<td><code>--indent</code></td>
+<td>JSON indentation (default <code>2</code>; <code>0</code> for the most compact multi-line output). Ignored for <code>--format compact</code>.</td>
+</tr>
+<tr>
+<td><code>--max-fk-options</code></td>
+<td>Max distinct related-model values to embed per relation (default <code>50</code>). <code>0</code> disables auto mode and any <code>'field_name'</code>/<code>['a','b']</code>/<code>'__str__'</code> spec; only <code>True</code> (ignores threshold) and <code>False</code> (always off) are unaffected. See <a href="#related-model-values">Related-model values</a>.</td>
+</tr>
+</tbody>
+</table>
+<p>The command is available in any project that has <code>'djangoql'</code> in
+<code>INSTALLED_APPS</code>.</p>
+<h2 id="closing-the-loop-generate-validate-repair">Closing the loop: generate → validate → repair<a class="headerlink" href="#closing-the-loop-generate-validate-repair" title="Permanent link">&para;</a></h2>
+<p>The description teaches the model <em>what</em> to write; DjangoQL's own parser and
+schema tell you whether it got it right — <strong>without touching the database</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLParser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">djangoql.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">DjangoQLSchema</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">library.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Book</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_query</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">DjangoQLSchema</span><span class="p">(</span><span class="n">Book</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">schema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">DjangoQLParser</span><span class="p">()</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">query</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">None</span>            <span class="c1"># valid</span>
+    <span class="k">except</span> <span class="n">DjangoQLError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>          <span class="c1"># feed this back to the model and ask it to fix</span>
+</code></pre></div>
+<p>Validation errors are written to be actionable — an unknown field yields
+<code>Unknown field: ratng. Did you mean: rating?</code> — so they make excellent feedback
+for a repair step: generate a query, validate it, and on failure hand the error
+back to the model for another attempt. Only once <code>validate_query()</code> returns
+<code>None</code> do you run the query against real data.</p>
+<h2 id="field-filtering-also-trims-the-description">Field filtering also trims the description<a class="headerlink" href="#field-filtering-also-trims-the-description" title="Permanent link">&para;</a></h2>
+<p><code>describe_schema_for_llm</code> reads the same introspected schema as autocomplete and
+query validation. Any field removed via <code>include_fields</code> / <code>exclude_fields</code>
+(see <a href="../schema/">Schema &amp; custom fields</a>) is therefore absent from the LLM
+description as well — there is no separate "visible to the LLM but not to
+autocomplete" state.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
