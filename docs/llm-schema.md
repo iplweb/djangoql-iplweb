@@ -64,6 +64,11 @@ exactly the same operators. The description now says that once, in
     "relation": { "operators": ["= None", "!= None", "<relation>.<field> (traverse with a dot)"] },
     "object_reference": { "operators": ["=", "!=", "in", "not in"] }
   },
+  "dictionaries": {
+    "library.author": {
+      "name": ["Isaac Asimov", "J.R.R. Tolkien", "Ursula K. Le Guin"]
+    }
+  },
   "models": {
     "library.book": {
       "id": "int",
@@ -81,8 +86,7 @@ exactly the same operators. The description now says that once, in
       "author": {
         "type": "relation",
         "relates_to": "library.author",
-        "match_field": "name",
-        "related_values": ["Isaac Asimov", "J.R.R. Tolkien", "Ursula K. Le Guin"]
+        "match_field": "name"
       }
     },
     "library.author": { "...": "..." }
@@ -109,12 +113,17 @@ That one example shows every field shape:
   is a bare string or an object.
 - **`title`** — a metadata object: `label` / `help_text` copied from the
   underlying model field.
-- **`author`** — a relation object: `relates_to` names the related model,
-  and `match_field` / `related_values` give real, matchable values.
+- **`author`** — a relation object: `relates_to` names the related model, and
+  `match_field` names *which* key in that model's `dictionaries` entry holds
+  its real, matchable values. The values themselves are **not** repeated on the
+  field; they live once under
+  `dictionaries["library.author"]["name"]` — see
+  [Related-model values](#related-model-values).
 
 No field, of any shape, ever carries `operators`, `example`,
-`"nullable": false`, or a generic explanatory `note` — those are exactly the
-things the legend and the `?` suffix now say once, at the top.
+`"nullable": false`, a generic explanatory `note`, or an inline
+`related_values` list — those are exactly the things the legend, the `?`
+suffix, and the shared `dictionaries` block now say once, at the top.
 
 ### The compact format
 
@@ -138,7 +147,7 @@ a comment block (written once), and every field becomes one line:
 start model: library.book
 
 library.book:
-  author          -> library.author  match name in ("Isaac Asimov", "J.R.R. Tolkien", "Ursula K. Le Guin")
+  author          -> library.author  match name
   genre           int?  choices: Science Fiction | Fantasy | Non-Fiction
   id              int
   published_date  date?
@@ -147,6 +156,10 @@ library.book:
 
 library.author:
   ...
+
+dictionaries (shared relation values, referenced above):
+  library.author
+    name: "Isaac Asimov", "J.R.R. Tolkien", "Ursula K. Le Guin"
 ```
 
 Conventions worth knowing when reading (or grepping) this format:
@@ -154,16 +167,21 @@ Conventions worth knowing when reading (or grepping) this format:
 - **`->`** marks a relation; the target model follows (`-> library.author`).
   A trailing `?` on the target (`-> library.author?`) means the relation
   itself is nullable.
-- **`match <field> in (...)`** after a relation gives concrete values to
-  traverse with (`match_fields` renders as several `field in (...)` segments
-  joined with `;`; a `'__str__'` spec renders as `examples: "...", "..."`
-  instead).
+- **`match <field>`** after a relation names *which* key in the target model's
+  `dictionaries` block holds the values to traverse with (`match_fields`
+  renders as `match field_a, field_b`; a `'__str__'` spec renders as
+  `examples`, pointing at the `examples:` key in the dictionary). The values
+  themselves are listed once, at the bottom, under `dictionaries`.
 - **`?`** right after the type marks a nullable scalar field (`date?`).
 - **`#`** before the type marks an `object_reference` picker field (matched by
   primary key), e.g. `author  # str (object_reference)`.
 - **`choices: a | b | c`** lists a closed set of values.
 - A quoted string after the type is the field's `label`; an em-dash and more
   text after it is the `help_text` (`"Book Title" — The full title...`).
+- **`dictionaries (...)`**, at the very bottom, is the glossary the `match`
+  references point into: one block per related model, then one `key: values`
+  line per match field (or `examples:` for a `'__str__'` spec). Each set of
+  values appears here exactly once, no matter how many relations reference it.
 
 What each part of either format carries:
 
@@ -190,9 +208,15 @@ What each part of either format carries:
   underlying model field, when it adds information beyond the field name.
 - **`choices`** — for a field defined with `choices=`, the closed set of labels
   DjangoQL accepts.
-- **`match_field`** / **`related_values`** (or `match_fields` / `related_examples`)
-  — for a relation, concrete values from the related model that the LLM can
-  match on.
+- **`dictionaries`** — a top-level map `{ related_model_label: { match_key:
+  [values] } }`. Each related model's matchable values live here **once**,
+  keyed by the field they came from (or `"__str__"` for `str(obj)` examples),
+  no matter how many relations point at that model. This is the single source
+  of truth a relation's `match_field` / `match_fields` refers into.
+- **`match_field`** (or **`match_fields`**) — on a relation, names which key(s)
+  in `dictionaries[relates_to]` hold the values to match on. The values are
+  never inlined on the field itself; look them up in `dictionaries`. A
+  `match_field` of `"__str__"` means `str(obj)` examples.
 - **`examples`** — a few worked, schema-agnostic queries.
 
 #### Resolving a field's operators
@@ -336,8 +360,9 @@ to that schema in the first place.
 
 Knowing that `author` is a `library.author` isn't enough for a model to write
 `author.name = "J.R.R. Tolkien"` — it also has to know what a real `name`
-looks like. `describe_schema_for_llm()` can embed real, matchable values for
-a relation directly in its entry, controlled by `max_fk_options`:
+looks like. `describe_schema_for_llm()` embeds real, matchable values for a
+relation in the shared top-level `dictionaries` block and points the relation
+at them with `match_field`, controlled by `max_fk_options`:
 
 ```python
 from djangoql.llm import describe_schema_for_llm
@@ -354,7 +379,18 @@ $ python manage.py djangoql_describe_schema_for_llm library.Book --max-fk-option
 `max_fk_options` is a cardinality gate, not a sample size: a relation's
 values are only embedded when the number of *distinct* values is at or under
 the threshold, so the model sees the whole domain rather than an arbitrary
-slice. `0` disables auto mode and any `'field_name'`/`['a','b']`/`'__str__'` spec (all are gated by this threshold); only `True` (which ignores the threshold) and `False` (always off) are unaffected by `max_fk_options`. Disabled relations fall back to a bare relation object — `relates_to` with no `match_field`/`related_values` — traversable with a dot or comparable to `None`.
+slice. `0` disables auto mode and any `'field_name'`/`['a','b']`/`'__str__'` spec (all are gated by this threshold); only `True` (which ignores the threshold) and `False` (always off) are unaffected by `max_fk_options`. Disabled relations fall back to a bare relation object — `relates_to` with no `match_field`/`match_fields` and no entry in `dictionaries` — traversable with a dot or comparable to `None`.
+
+!!! note "Values are deduplicated across relations"
+    A single related model (a dictionary/lookup table) is often the target of
+    *many* foreign keys — several `jezyk` FKs, a self-relation plus reverse
+    relations, and so on. Rather than repeat that model's value list at every
+    such relation, `describe_schema_for_llm()` emits it **once**, in the
+    top-level `dictionaries` block keyed by `(related_model, match_field)`, and
+    every relation to it carries only a lightweight `match_field` reference.
+    Two relations pointing at the same model but matching on *different* fields
+    produce two separate `dictionaries` entries (one per field), each still
+    emitted once.
 
 #### Choosing what a relation reveals: `fk_options`
 
@@ -381,9 +417,9 @@ controls what gets embedded for that relation:
 
 | Spec | Meaning |
 | --- | --- |
-| `'field_name'` | Emit that field's distinct values, gated by `max_fk_options`. Produces `match_field` + `related_values`. |
-| `['field_a', 'field_b']` | Emit each field's distinct values, gated by `max_fk_options`. Produces `match_fields` + a per-field `related_values` dict. |
-| `'__str__'` | Emit up to `max_fk_options` rows' `str(obj)`, gated by row count rather than distinct-value count. Produces `related_examples`. |
+| `'field_name'` | Emit that field's distinct values, gated by `max_fk_options`. Produces `match_field` on the relation; values under `dictionaries[relates_to][field_name]`. |
+| `['field_a', 'field_b']` | Emit each field's distinct values, gated by `max_fk_options`. Produces `match_fields` on the relation; each field's values under `dictionaries[relates_to][field]`. |
+| `'__str__'` | Emit up to `max_fk_options` rows' `str(obj)`, gated by row count rather than distinct-value count. Produces `match_field: "__str__"`; values under `dictionaries[relates_to]["__str__"]`. |
 | `True` | Force the relation's default identifying field (see auto mode), ignoring the `max_fk_options` threshold. Falls back to `'__str__'`-style examples if the related model has no string field. |
 | `False` | Never reveal values for this relation, regardless of `max_fk_options`. |
 | *(no entry)* | **Auto mode** — see below. |
@@ -422,21 +458,30 @@ relation overrides the exclusion; the skip only applies to auto mode.
 
 #### Output shape
 
-Depending on the spec (or auto mode's equivalent), a relation's entry gains
-one of three shapes, always alongside `type` and `relates_to`:
+The values always live in the top-level `dictionaries` block, keyed by
+`(related_model, match_key)`; the relation entry itself carries only a
+reference, alongside `type` and `relates_to`:
 
-- **`match_field` + `related_values`** — a single field's distinct values, as
-  a list (`'field_name'` spec, auto mode, or `True`).
-- **`match_fields` + `related_values`** — several fields' distinct values, as
-  a dict keyed by field name (`['a', 'b']` spec).
-- **`related_examples`** — `str(obj)` rows, when there's no single field to
-  match on (`'__str__'` spec, or as `True`'s fallback when the related model
-  has no string field).
+- **`match_field: "field_name"`** — a single field (`'field_name'` spec, auto
+  mode, or `True`). Its distinct values are the list at
+  `dictionaries[relates_to]["field_name"]`.
+- **`match_fields: ["field_a", "field_b"]`** — several fields (`['a', 'b']`
+  spec). Each field's distinct values are the list at
+  `dictionaries[relates_to][field]`.
+- **`match_field: "__str__"`** — `str(obj)` rows, when there's no single field
+  to match on (`'__str__'` spec, or as `True`'s fallback when the related model
+  has no string field). The examples are the list at
+  `dictionaries[relates_to]["__str__"]`.
 
-When none of these apply (disabled, over threshold, or a sensitive target in
-auto mode), the relation entry has no extra keys at all — just `type` and
-`relates_to` — and the model falls back to the `relation` note in
-`grammar.operators`: traverse with a dot, or compare to `None`.
+To resolve a relation's values, take its `match_field` (or each of its
+`match_fields`) and look it up in `dictionaries[relates_to]`. A `match_key` of
+`"__str__"` is `str(obj)` examples, not a traversable field.
+
+When no values apply (disabled, over threshold, or a sensitive target in auto
+mode), the relation entry has no `match_field`/`match_fields` at all — just
+`type` and `relates_to`, and no entry in `dictionaries` — and the model falls
+back to the `relation` note in `grammar.operators`: traverse with a dot, or
+compare to `None`.
 
 ## Management command: `djangoql_describe_schema_for_llm`
 

@@ -108,7 +108,7 @@ def _is_sensitive_target(model):
     ``SENSITIVE_TARGET_APP_LABELS``), plus the project's ``AUTH_USER_MODEL``
     -- which may live in any app, including one not otherwise flagged as
     sensitive (e.g. a custom ``myapp.User``). Only guards the *auto* branch of
-    :func:`_relation_values`; an explicit ``fk_options`` entry still overrides.
+    :func:`_relation_plan`; an explicit ``fk_options`` entry still overrides.
     """
     if model._meta.app_label in SENSITIVE_TARGET_APP_LABELS:
         return True
@@ -126,7 +126,7 @@ def _no_value_targets(schema):
     ``no_value_targets`` is an optional schema attribute: an iterable of model
     classes and/or ``"app_label.Model"`` dotted labels whose row values must
     **never** be emitted -- a hard denylist that overrides both ``fk_options``
-    and ``max_fk_options`` (see :func:`_relation_values`). Use it to keep
+    and ``max_fk_options`` (see :func:`_relation_plan`). Use it to keep
     institution-specific data (unit / institution names, etc.) out of a
     committed or shared schema description, independent of row counts.
 
@@ -380,16 +380,6 @@ def _distinct_values(related_model, field_name, limit):
         return None
 
 
-def _match_field_entry(related_model, match_field, limit):
-    """Facts for a single identifying field, or {} if nothing fits."""
-    if match_field is None:
-        return {}
-    values = _distinct_values(related_model, match_field, limit)
-    if not values:
-        return {}
-    return {'match_field': match_field, 'related_values': values}
-
-
 def _fk_spec(schema, field, name):
     """Resolve the fk_options entry for ``name`` on ``field.model``.
 
@@ -397,21 +387,6 @@ def _fk_spec(schema, field, name):
     """
     fk_options = getattr(schema, 'fk_options', None) or {}
     return fk_options.get(field.model, {}).get(name, _AUTO)
-
-
-def _match_fields_entry(related_model, match_fields, limit):
-    """Facts for several identifying fields, or {} if none fit."""
-    values = {}
-    for f in match_fields:
-        v = _distinct_values(related_model, f, limit)
-        if v:
-            values[f] = v
-    if not values:
-        return {}
-    return {
-        'match_fields': [f for f in match_fields if f in values],
-        'related_values': values,
-    }
 
 
 def _str_examples(related_model, limit):
@@ -440,16 +415,14 @@ def _str_examples(related_model, limit):
         return None
 
 
-def _examples_entry(related_model, limit):
-    """Facts: str(obj) examples for a relation, or {}."""
-    examples = _str_examples(related_model, limit)
-    if not examples:
-        return {}
-    return {'related_examples': examples}
+#: Dictionary key under which a relation's ``str(obj)`` examples are stored,
+#: mirroring the ``'__str__'`` fk_options spec. Safe as a bucket key because no
+#: real Django field can be named ``__str__``.
+_STR_KEY = '__str__'
 
 
-def _relation_values(schema, field, name, max_fk_options):
-    """Concrete match values for a relation, honouring fk_options.
+def _relation_plan(schema, field, name, max_fk_options):
+    """What values a relation should contribute, resolved but not yet fetched.
 
     A hard ``no_value_targets`` denylist (see :func:`_no_value_targets`) is
     checked first and, when it matches the relation target, suppresses values
@@ -463,47 +436,125 @@ def _relation_values(schema, field, name, max_fk_options):
       - ['a', 'b']   -> each field's distinct values, gated by threshold
       - '__str__'    -> str(obj) examples, gated by row count
       - no entry     -> auto: default field, skip sensitive models / over-limit
-    Returns {} when nothing should be emitted; never raises.
+
+    Returns ``None`` when nothing should be emitted, else one of::
+
+        ('field',  match_field,  limit)
+        ('fields', [f1, f2, ...], limit)
+        ('str',    None,         limit)
+
+    Fetching (and its memoisation across FKs to the same dictionary) is left to
+    :func:`_collect_dictionaries`; this function only decides the plan.
     """
     related_model = field.related_model
     if related_model in _no_value_targets(schema):
-        return {}
+        return None
     spec = _fk_spec(schema, field, name)
 
     if spec is False:
-        return {}
+        return None
     if spec is True:
         match_field = _default_match_field(schema, field.relation)
         if match_field is None:
-            return _examples_entry(related_model, limit=None)
-        return _match_field_entry(related_model, match_field, limit=None)
-    if isinstance(spec, str) and spec != '__str__':
-        return _match_field_entry(related_model, spec, limit=max_fk_options)
+            return ('str', None, None)
+        return ('field', match_field, None)
+    if isinstance(spec, str) and spec != _STR_KEY:
+        return ('field', spec, max_fk_options)
     if isinstance(spec, (list, tuple)):
-        return _match_fields_entry(
-            related_model,
-            list(spec),
-            limit=max_fk_options,
-        )
-    if spec == '__str__':
-        return _examples_entry(related_model, limit=max_fk_options)
+        return ('fields', list(spec), max_fk_options)
+    if spec == _STR_KEY:
+        return ('str', None, max_fk_options)
 
     # spec is _AUTO
     if max_fk_options <= 0:
-        return {}
+        return None
     if _is_sensitive_target(related_model):
-        return {}
+        return None
     match_field = _default_match_field(schema, field.relation)
     if match_field is None:
-        return {}
-    return _match_field_entry(related_model, match_field, limit=max_fk_options)
+        return None
+    return ('field', match_field, max_fk_options)
 
 
-def _field_ir(name, field, schema, max_fk_options):
+def _collect_dictionaries(schema, max_fk_options):
+    """Fetch related-model values once per ``(target model, match key)``.
+
+    The same dictionary (e.g. a ``jezyk`` slownik) is often the target of many
+    foreign keys; emitting its values inline at every FK bloats the prompt with
+    pure redundancy. Here they are gathered a single time into a shared block,
+    and each relation carries only a lightweight reference to it.
+
+    Returns ``(dictionaries, field_refs)``:
+
+    - ``dictionaries``: ``{target_label: {match_key: [values, ...]}}`` -- one
+      entry per unique ``(target model, match field)``. ``match_key`` is a
+      field name, or ``'__str__'`` for ``str(obj)`` examples.
+    - ``field_refs``: ``{(owner_label, field_name): {ref}}`` where ``ref`` is
+      ``{'match_field': key}`` or ``{'match_fields': [keys]}`` -- what the
+      relation should carry to point back into ``dictionaries``. Absent for a
+      relation whose values ended up empty (no rows, over threshold, ...).
+
+    Fetches are memoised on the per-target bucket, so N foreign keys to one
+    dictionary trigger a single ``SELECT DISTINCT`` rather than N.
+    """
+    dictionaries = {}
+    field_refs = {}
+
+    def _fetch_field(bucket, related_model, match_field, limit):
+        if match_field in bucket:
+            return bucket[match_field]
+        values = _distinct_values(related_model, match_field, limit)
+        if values:
+            bucket[match_field] = values
+        return values
+
+    for owner_label, fields in schema.models.items():
+        for name, field in fields.items():
+            if not (
+                field.suggested
+                and isinstance(field, RelationField)
+                and not isinstance(field, _DERIVED_FIELD_CLASSES)
+            ):
+                continue
+            plan = _relation_plan(schema, field, name, max_fk_options)
+            if plan is None:
+                continue
+            related_label = field.relation
+            related_model = field.related_model
+            bucket = dictionaries.setdefault(related_label, {})
+            kind, target, limit = plan
+            if kind == 'field':
+                if _fetch_field(bucket, related_model, target, limit):
+                    field_refs[owner_label, name] = {'match_field': target}
+            elif kind == 'fields':
+                present = [
+                    f
+                    for f in target
+                    if _fetch_field(bucket, related_model, f, limit)
+                ]
+                if present:
+                    field_refs[owner_label, name] = {'match_fields': present}
+            else:  # kind == 'str'
+                if _STR_KEY not in bucket:
+                    examples = _str_examples(related_model, limit)
+                    if examples:
+                        bucket[_STR_KEY] = examples
+                if _STR_KEY in bucket:
+                    field_refs[owner_label, name] = {'match_field': _STR_KEY}
+            if not bucket:
+                dictionaries.pop(related_label, None)
+
+    return dictionaries, field_refs
+
+
+def _field_ir(name, field, field_refs, owner_label):
     """Semantic facts for one field, independent of output format.
 
     Carries information only — no operators, examples, or notes (those are
-    derivable from the type and belong to the renderer's legend).
+    derivable from the type and belong to the renderer's legend). A relation's
+    concrete values live in the shared ``dictionaries`` block; the field only
+    references them via ``match_field`` / ``match_fields`` (see
+    :func:`_collect_dictionaries`).
     """
     ir = {'type': field.type, 'nullable': bool(field.nullable)}
     ir.update(_field_metadata(field))
@@ -511,8 +562,7 @@ def _field_ir(name, field, schema, max_fk_options):
         ir['object_reference'] = True
     if isinstance(field, RelationField):
         ir['relates_to'] = field.relation
-        if schema is not None:
-            ir.update(_relation_values(schema, field, name, max_fk_options))
+        ir.update(field_refs.get((owner_label, name), {}))
     else:
         choices = _choice_labels(field)
         if choices:
@@ -560,12 +610,14 @@ def _schema_capabilities(schema):
 
 def _build_schema_ir(schema, max_fk_options):
     """Build the format-independent intermediate representation of a schema."""
+    dictionaries, field_refs = _collect_dictionaries(schema, max_fk_options)
     return {
         'start_model': schema.model_label(schema.current_model),
         'capabilities': _schema_capabilities(schema),
+        'dictionaries': dictionaries,
         'models': {
             model_label: {
-                name: _field_ir(name, field, schema, max_fk_options)
+                name: _field_ir(name, field, field_refs, model_label)
                 for name, field in fields.items()
                 if field.suggested
                 and not isinstance(field, _DERIVED_FIELD_CLASSES)
@@ -612,6 +664,14 @@ def _q(value):
     return f'"{value}"'
 
 
+def _dict_key_label(key):
+    """Human label for a dictionary match key: ``'__str__'`` reads as
+    ``examples`` (there is no single field to match on), any other key is the
+    field name verbatim. Shared by the FK reference and the dictionary block so
+    the two always line up."""
+    return 'examples' if key == _STR_KEY else key
+
+
 def _append_label(parts, facts):
     """Append the quoted ``label`` (with optional ``help_text``) to ``parts``,
     shared by both the scalar and relation branches of :func:`_compact_field`
@@ -634,20 +694,13 @@ def _compact_field(name, facts, width):
         if facts.get('nullable'):
             rel += '?'
         parts = [f'-> {rel}']
+        # Values themselves live once in the shared dictionaries block; the FK
+        # only names which key to look up there.
         if 'match_field' in facts:
-            vals = ', '.join(_q(v) for v in facts['related_values'])
-            parts.append('match {} in ({})'.format(facts['match_field'], vals))
+            mf = facts['match_field']
+            parts.append('examples' if mf == _STR_KEY else 'match ' + mf)
         elif 'match_fields' in facts:
-            segs = [
-                '{} in ({})'.format(
-                    f, ', '.join(_q(v) for v in facts['related_values'][f])
-                )
-                for f in facts['match_fields']
-            ]
-            parts.append('match ' + '; '.join(segs))
-        elif 'related_examples' in facts:
-            ex = ', '.join(_q(v) for v in facts['related_examples'])
-            parts.append('examples: ' + ex)
+            parts.append('match ' + ', '.join(facts['match_fields']))
         _append_label(parts, facts)
         return '{}  {}'.format(padded, '  '.join(parts))
     # scalar fields (including object_reference pickers)
@@ -717,7 +770,24 @@ def _render_compact(ir):
         for name, facts in fields.items():
             lines.append('  ' + _compact_field(name, facts, width))
         lines.append('')
+    lines.extend(_compact_dictionary_lines(ir.get('dictionaries') or {}))
     return '\n'.join(lines).rstrip() + '\n'
+
+
+def _compact_dictionary_lines(dictionaries):
+    """The shared dictionaries block: every relation's concrete values, listed
+    once and keyed by ``(target model, match key)``, that the ``-> model
+    match <field>`` / ``examples`` references above point back into."""
+    if not dictionaries:
+        return []
+    lines = ['dictionaries (shared relation values, referenced above):']
+    for label, entries in dictionaries.items():
+        lines.append(f'  {label}')
+        for key, values in entries.items():
+            vals = ', '.join(_q(v) for v in values)
+            lines.append(f'    {_dict_key_label(key)}: {vals}')
+    lines.append('')
+    return lines
 
 
 def _apply_capabilities_to_legend(legend, caps):
@@ -787,6 +857,7 @@ def _render_json(ir):
         'start_model': ir['start_model'],
         'grammar': dict(_GRAMMAR),
         'operators_by_type': legend,
+        'dictionaries': ir.get('dictionaries', {}),
         'models': {
             label: {name: _json_field(facts) for name, facts in fields.items()}
             for label, fields in ir['models'].items()

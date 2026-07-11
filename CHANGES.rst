@@ -1,3 +1,32 @@
+0.31.0 (2026-07-11)
+-------------------
+
+* **LLM schema — dictionary value deduplication (breaking JSON shape):** a
+  related model that is the target of several relations (a shared dictionary /
+  lookup table -- e.g. many ``jezyk`` foreign keys, or a self-relation plus
+  reverse relations) previously had its full value list re-emitted inline at
+  **every** relation, wasting large amounts of prompt space on pure
+  redundancy. Its values are now emitted **once**, in a new top-level
+  ``dictionaries`` block keyed by ``(related_model, match_field)``, and each
+  relation carries only a lightweight ``match_field`` / ``match_fields``
+  reference into it. ``str(obj)`` examples are deduplicated the same way under
+  the ``"__str__"`` key.
+
+  **Breaking change to the JSON output shape:** relation field entries no
+  longer carry an inline ``related_values`` / ``related_examples`` value;
+  instead they carry ``match_field`` (which may be ``"__str__"``) or
+  ``match_fields``, and the values live under
+  ``dictionaries[relates_to][match_key]``. Consumers that parsed per-field
+  ``related_values`` must read from the top-level ``dictionaries`` block
+  instead. The compact format changes correspondingly: a relation renders as
+  ``-> model  match <field>`` (or ``examples``) with the values listed once in
+  a ``dictionaries (...)`` block at the bottom, rather than inline
+  ``match <field> in (...)`` at each relation. Semantics are otherwise
+  unchanged -- ``fk_options``, ``max_fk_options``, ``no_value_targets``, the
+  auto-mode sensitive-target guard, and ``choices`` all behave exactly as
+  before. As a side effect, a shared dictionary is now queried once rather than
+  once per referencing relation.
+
 0.30.3 (2026-07-10)
 -------------------
 

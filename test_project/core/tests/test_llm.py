@@ -331,7 +331,8 @@ class DjangoqlSchemaCommandTest(TestCase):
         )
         data = json.loads(self._run('core.Book', '--max-fk-options', '0'))
         similar = data['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertEqual({}, data['dictionaries'])
 
     def test_compact_format_prints_text(self):
         out = self._run('core.Book', '--format', 'compact')
@@ -353,14 +354,16 @@ class RelationValuesTest(TestCase):
 
     def test_auto_emits_related_values_for_small_relation(self):
         # similar_books -> Book (non-sensitive). A handful of books means few
-        # distinct names, so auto mode should surface them.
+        # distinct names, so auto mode should surface them -- once, in the
+        # shared dictionaries block, referenced by match_field.
         for n in ('Dune', 'Solaris', 'It'):
             self._book(n)
         bundle = describe_schema_for_llm(DjangoQLSchema(Book))
         similar = bundle['models']['core.book']['similar_books']
         self.assertEqual('name', similar['match_field'])
         self.assertEqual(
-            {'Dune', 'Solaris', 'It'}, set(similar['related_values'])
+            {'Dune', 'Solaris', 'It'},
+            set(bundle['dictionaries']['core.book']['name']),
         )
 
     def test_auto_skips_relation_over_threshold(self):
@@ -368,21 +371,24 @@ class RelationValuesTest(TestCase):
             self._book(n)
         bundle = describe_schema_for_llm(DjangoQLSchema(Book), max_fk_options=2)
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
 
     def test_max_fk_options_zero_disables_auto(self):
         self._book('Dune')
         bundle = describe_schema_for_llm(DjangoQLSchema(Book), max_fk_options=0)
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertEqual({}, bundle['dictionaries'])
 
     def test_auto_never_touches_sensitive_target_model(self):
         # author -> auth.User is sensitive: no values, and never the password.
         self._book('Dune')
         bundle = describe_schema_for_llm(DjangoQLSchema(Book))
         author = bundle['models']['core.book']['author']
-        self.assertNotIn('related_values', author)
-        self.assertNotIn('password', json.dumps(author))
+        self.assertNotIn('match_field', author)
+        self.assertNotIn('auth.user', bundle['dictionaries'])
+        self.assertNotIn('password', json.dumps(bundle))
 
     def test_auto_skips_custom_auth_user_model(self):
         # A custom AUTH_USER_MODEL living outside the built-in sensitive
@@ -395,7 +401,8 @@ class RelationValuesTest(TestCase):
         with mock.patch('djangoql.llm.get_user_model', return_value=Book):
             bundle = describe_schema_for_llm(DjangoQLSchema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
 
     def test_distinct_values_logs_on_error(self):
         # A bad field name blows up inside the try/except in _distinct_values;
@@ -485,7 +492,10 @@ class RelationValuesTest(TestCase):
         bundle = describe_schema_for_llm(ForcedSchema(Book))
         author = bundle['models']['core.book']['author']
         self.assertEqual('username', author['match_field'])
-        self.assertEqual({'ada', 'alan'}, set(author['related_values']))
+        self.assertEqual(
+            {'ada', 'alan'},
+            set(bundle['dictionaries']['auth.user']['username']),
+        )
 
     def test_fk_options_list_emits_values_per_field(self):
         User.objects.create(username='ada', email='ada@x.io')
@@ -496,8 +506,9 @@ class RelationValuesTest(TestCase):
         bundle = describe_schema_for_llm(ListSchema(Book))
         author = bundle['models']['core.book']['author']
         self.assertEqual(['username', 'email'], author['match_fields'])
-        self.assertEqual(['ada'], author['related_values']['username'])
-        self.assertEqual(['ada@x.io'], author['related_values']['email'])
+        user_dict = bundle['dictionaries']['auth.user']
+        self.assertEqual(['ada'], user_dict['username'])
+        self.assertEqual(['ada@x.io'], user_dict['email'])
 
     def test_fk_options_str_emits_related_examples(self):
         User.objects.create(username='ada')
@@ -507,7 +518,10 @@ class RelationValuesTest(TestCase):
 
         bundle = describe_schema_for_llm(StrSchema(Book))
         author = bundle['models']['core.book']['author']
-        self.assertEqual(['ada'], author['related_examples'])
+        self.assertEqual('__str__', author['match_field'])
+        self.assertEqual(
+            ['ada'], bundle['dictionaries']['auth.user']['__str__']
+        )
 
     def test_fk_options_false_emits_nothing(self):
         User.objects.create(username='ada')
@@ -517,13 +531,15 @@ class RelationValuesTest(TestCase):
 
         bundle = describe_schema_for_llm(OffSchema(Book))
         author = bundle['models']['core.book']['author']
-        self.assertNotIn('related_values', author)
-        self.assertNotIn('related_examples', author)
+        self.assertNotIn('match_field', author)
+        self.assertNotIn('match_fields', author)
+        self.assertNotIn('auth.user', bundle['dictionaries'])
 
     def test_fk_options_false_on_nonsensitive_relation(self):
         # author -> auth.User is sensitive, so auto mode would exclude it
         # regardless of the False spec; similar_books -> Book is not, so an
-        # empty result here can only be explained by the False dispatch arm.
+        # empty reference here can only be explained by the False dispatch arm.
+        # (Other relations to core.book still populate its dictionary entry.)
         for n in ('Dune', 'Solaris'):
             self._book(n)
 
@@ -532,7 +548,7 @@ class RelationValuesTest(TestCase):
 
         bundle = describe_schema_for_llm(OffSchema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
 
     def test_fk_options_true_ignores_threshold(self):
         # Test on similar_books -> Book, whose default identifying field is
@@ -548,7 +564,10 @@ class RelationValuesTest(TestCase):
         bundle = describe_schema_for_llm(ForceSchema(Book), max_fk_options=1)
         similar = bundle['models']['core.book']['similar_books']
         self.assertEqual('name', similar['match_field'])
-        self.assertEqual({'Dune', 'Solaris'}, set(similar['related_values']))
+        self.assertEqual(
+            {'Dune', 'Solaris'},
+            set(bundle['dictionaries']['core.book']['name']),
+        )
 
 
 class CompactFormatTest(TestCase):
@@ -599,7 +618,7 @@ class CompactFormatTest(TestCase):
         self.assertIn('choices:', line)
         self.assertIn('Drama', line)
 
-    def test_relation_values_render_inline(self):
+    def test_relation_references_dictionary_block(self):
         Book.objects.create(
             name='Dune',
             author=User.objects.create(username='ada'),
@@ -614,8 +633,13 @@ class CompactFormatTest(TestCase):
             for ln in text.splitlines()
             if ln.strip().startswith('similar_books')
         )
-        self.assertIn('match name in (', line)
-        self.assertIn('"Dune"', line)
+        # The relation names its dictionary key; values live in the shared
+        # block, not inline on the line.
+        self.assertIn('-> core.book', line)
+        self.assertIn('match name', line)
+        self.assertNotIn('"Dune"', line)
+        # ...but the value appears exactly once, in the dictionaries block.
+        self.assertEqual(1, text.count('"Dune"'))
 
     def test_unknown_format_raises(self):
         with self.assertRaises(ValueError):
@@ -654,8 +678,11 @@ class CompactFormatTest(TestCase):
         line = next(
             ln for ln in text.splitlines() if ln.strip().startswith('author')
         )
-        self.assertIn('username in (', line)
-        self.assertIn('email in (', line)
+        # Both match fields are named on the relation line; their values are
+        # listed once in the shared dictionaries block.
+        self.assertIn('match username, email', line)
+        self.assertIn('username: ', text)
+        self.assertIn('email: ', text)
 
     def test_compact_relation_line_includes_label_and_help_text(self):
         from djangoql.llm import _compact_field
@@ -691,13 +718,14 @@ class NoValueTargetsTest(TestCase):
 
     def test_control_without_denylist_similar_books_auto_emits(self):
         # Baseline: similar_books -> Book is small/non-sensitive, so auto mode
-        # normally surfaces related_values. The denylist tests below suppress
-        # it.
+        # normally surfaces values (once, in dictionaries). The denylist tests
+        # below suppress it.
         for n in ('Dune', 'Solaris'):
             self._book(n)
         bundle = describe_schema_for_llm(DjangoQLSchema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertIn('related_values', similar)
+        self.assertIn('match_field', similar)
+        self.assertIn('core.book', bundle['dictionaries'])
 
     def test_model_class_target_suppresses_related_values(self):
         for n in ('Dune', 'Solaris'):
@@ -708,7 +736,8 @@ class NoValueTargetsTest(TestCase):
 
         bundle = describe_schema_for_llm(Schema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
 
     def test_dotted_label_target_suppresses_related_values(self):
         for n in ('Dune', 'Solaris'):
@@ -719,7 +748,8 @@ class NoValueTargetsTest(TestCase):
 
         bundle = describe_schema_for_llm(Schema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
 
     def test_denylist_overrides_explicit_fk_options_true(self):
         # fk_options=True normally forces emission and overrides even the
@@ -733,7 +763,8 @@ class NoValueTargetsTest(TestCase):
 
         bundle = describe_schema_for_llm(Schema(Book))
         similar = bundle['models']['core.book']['similar_books']
-        self.assertNotIn('related_values', similar)
+        self.assertNotIn('match_field', similar)
+        self.assertNotIn('core.book', bundle['dictionaries'])
 
     def test_bad_label_is_ignored_not_fatal(self):
         # A misspelled/absent label must not break schema description.
@@ -746,4 +777,157 @@ class NoValueTargetsTest(TestCase):
         bundle = describe_schema_for_llm(Schema(Book))
         similar = bundle['models']['core.book']['similar_books']
         # unknown target -> no suppression, auto emission intact
-        self.assertIn('related_values', similar)
+        self.assertIn('match_field', similar)
+        self.assertIn('core.book', bundle['dictionaries'])
+
+
+class DictionaryDedupTest(TestCase):
+    """A related model's values are emitted ONCE, in a top-level
+    ``dictionaries`` block, and every relation to that model *references* them
+    by ``(relates_to, match_field)`` instead of inlining a fresh copy.
+
+    ``core.book`` is targeted by three relations (``similar_books`` forward,
+    plus the reverse ``book`` on ``auth.user`` and ``contenttypes.contenttype``)
+    -- so a naive per-FK emitter repeats the same name list three times.
+    """
+
+    def _book(self, name):
+        author = User.objects.create(username='u-%s' % name)
+        return Book.objects.create(name=name, author=author)
+
+    def test_compact_emits_shared_values_exactly_once(self):
+        for n in ('Dune', 'Solaris', 'It'):
+            self._book(n)
+        text = describe_schema_for_llm(DjangoQLSchema(Book), format='compact')
+        # Three relations point at core.book, but its name list appears once.
+        self.assertEqual(1, text.count('"Dune"'))
+        self.assertEqual(1, text.count('"Solaris"'))
+
+    def test_compact_relations_reference_dictionary_not_inline(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        text = describe_schema_for_llm(DjangoQLSchema(Book), format='compact')
+        # The old inline `match <field> in (...)` per FK is gone.
+        self.assertNotIn('match name in (', text)
+        # The similar_books relation line references core.book, without values.
+        line = next(
+            ln
+            for ln in text.splitlines()
+            if ln.strip().startswith('similar_books')
+        )
+        self.assertIn('-> core.book', line)
+        self.assertNotIn('"Dune"', line)
+
+    def test_compact_has_a_dictionaries_section(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        text = describe_schema_for_llm(DjangoQLSchema(Book), format='compact')
+        self.assertIn('dictionaries', text)
+        self.assertIn('core.book', text)
+
+    def test_json_dictionaries_block_holds_values_once(self):
+        for n in ('Dune', 'Solaris', 'It'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        self.assertIn('dictionaries', bundle)
+        self.assertEqual(
+            {'Dune', 'Solaris', 'It'},
+            set(bundle['dictionaries']['core.book']['name']),
+        )
+
+    def test_json_relation_carries_match_field_not_values(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertEqual('name', similar['match_field'])
+        self.assertNotIn('related_values', similar)
+
+    def test_json_no_field_anywhere_carries_related_values(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        for fields in bundle['models'].values():
+            for facts in fields.values():
+                if isinstance(facts, dict):
+                    self.assertNotIn('related_values', facts)
+                    self.assertNotIn('related_examples', facts)
+
+    def test_all_relations_to_same_model_share_one_entry(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        # core.book has exactly one match key ('name'), shared by all three
+        # relations that point at it.
+        self.assertEqual(['name'], list(bundle['dictionaries']['core.book']))
+        similar = bundle['models']['core.book']['similar_books']
+        reverse_from_user = bundle['models']['auth.user']['book']
+        self.assertEqual('name', similar['match_field'])
+        self.assertEqual('name', reverse_from_user['match_field'])
+
+    def test_different_match_fields_to_same_model_are_separate_entries(self):
+        from django.contrib.auth.models import Permission
+
+        User.objects.create(username='ada', email='ada@x.io')
+
+        class Schema(DjangoQLSchema):
+            fk_options = {
+                Book: {'author': 'username'},
+                Permission: {'user': 'email'},
+            }
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        user_dict = bundle['dictionaries']['auth.user']
+        self.assertEqual(['ada'], user_dict['username'])
+        self.assertEqual(['ada@x.io'], user_dict['email'])
+        self.assertEqual(
+            'username',
+            bundle['models']['core.book']['author']['match_field'],
+        )
+        self.assertEqual(
+            'email',
+            bundle['models']['auth.permission']['user']['match_field'],
+        )
+
+    def test_str_examples_land_in_dictionary_under_str_key(self):
+        User.objects.create(username='ada')
+
+        class Schema(DjangoQLSchema):
+            fk_options = {Book: {'author': '__str__'}}
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        author = bundle['models']['core.book']['author']
+        self.assertEqual('__str__', author['match_field'])
+        self.assertEqual(
+            ['ada'], bundle['dictionaries']['auth.user']['__str__']
+        )
+
+    def test_max_fk_options_zero_yields_no_dictionaries(self):
+        self._book('Dune')
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book), max_fk_options=0)
+        self.assertEqual({}, bundle['dictionaries'])
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('match_field', similar)
+
+    def test_sensitive_target_stays_out_of_dictionaries(self):
+        self._book('Dune')
+        bundle = describe_schema_for_llm(DjangoQLSchema(Book))
+        # author -> auth.User is sensitive: never auto-dumped, not even the
+        # password field, and no auth.user entry in the shared dictionaries.
+        self.assertNotIn('auth.user', bundle['dictionaries'])
+        author = bundle['models']['core.book']['author']
+        self.assertNotIn('match_field', author)
+        self.assertNotIn('password', json.dumps(bundle))
+
+    def test_no_value_targets_keeps_model_out_of_dictionaries(self):
+        for n in ('Dune', 'Solaris'):
+            self._book(n)
+
+        class Schema(DjangoQLSchema):
+            fk_options = {Book: {'similar_books': True}}
+            no_value_targets = (Book,)
+
+        bundle = describe_schema_for_llm(Schema(Book))
+        self.assertNotIn('core.book', bundle['dictionaries'])
+        similar = bundle['models']['core.book']['similar_books']
+        self.assertNotIn('match_field', similar)
